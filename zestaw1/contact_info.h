@@ -28,4 +28,12 @@ typedef struct ContactInfo {
     Address address;
 } ContactInfo;
 
+/*
+ * Comparators
+ */
+int by_surname(ContactInfo *left, ContactInfo *right);
+int by_birthdate(ContactInfo *left, ContactInfo *right);
+int by_mail(ContactInfo *left, ContactInfo *right);
+int by_phone(ContactInfo *left, ContactInfo *right);
+
 #endif // CONTACT_INFO_H
