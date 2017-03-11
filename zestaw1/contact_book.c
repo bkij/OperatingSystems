@@ -27,7 +27,7 @@ ContactNode *node_find_min(ContactNode *current, int (*comparator)(ContactInfo *
 void insert(ContactNode **sorted_begin, ContactNode **sorted_end, ContactNode *min, int (*comparator)(ContactInfo *left, ContactInfo *right))
 {
     ContactNode *current = *sorted_begin;
-    while(current != (*sorted_end)->next, comparator(min->contact_data, current->contact_data) > 0) {
+    while(current != (*sorted_end)->next && comparator(min->contact_data, current->contact_data) > 0) {
         current = current->next;
     }
     // Insert node at the beginning
