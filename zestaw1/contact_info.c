@@ -14,12 +14,12 @@ int by_birthdate(ContactInfo *left, ContactInfo *right)
     char month_right[2];
     char day_left[2];
     char day_right[2];
-    strncpy(year_left, left->date_of_birth[4], 4);
-    strncpy(year_right, right->date_of_birth[4], 4);
-    strncpy(month_left, left->date_of_birth[2], 2);
-    strncpy(month_rigth, right->date_of_birth[2], 2);
-    strncpy(day_left, left->date_of_birth, 2);
-    strncpy(day_right, right->date_of_birth, 2);
+    strncpy(year_left, left->birthdate + 4, 4);
+    strncpy(year_right, right->birthdate + 4, 4);
+    strncpy(month_left, left->birthdate + 2, 2);
+    strncpy(month_right, right->birthdate + 2, 2);
+    strncpy(day_left, left->birthdate, 2);
+    strncpy(day_right, right->birthdate, 2);
 
     if(strncmp(year_left, year_right, 4) != 0) {
         return strncmp(year_left, year_right, 4);
@@ -32,10 +32,10 @@ int by_birthdate(ContactInfo *left, ContactInfo *right)
 
 int by_mail(ContactInfo *left, ContactInfo *right)
 {
-    return strncmp(left->email, right->email, sizeof(left->email - 1));
+    return strncmp(left->mail, right->mail, sizeof(left->mail - 1));
 }
 
 int by_phone(ContactInfo *left, ContactInfo *right)
 {
-    return strncmp(left->telephone_number, right->telephone_number, sizeof(left->telephone_number - 1));
+    return strncmp(left->phone, right->phone, sizeof(left->phone - 1));
 }

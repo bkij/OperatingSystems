@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <malloc.h>
+#include <stdlib.h>
+#include <string.h>
 #include "contact_book.h"
 
 /*
@@ -24,6 +26,8 @@
  *  HELPER FUNCTIONS
  */
 
+// Generic helpers and local operations
+
 bool is_red(RBNode *node)
 {
     if(node == NULL) {
@@ -43,7 +47,7 @@ void parent_set_child(RBNode *current_child, RBNode *new_child)
         // Current child is root
         return;
     }
-    if(parent->left == current->child) {
+    if(parent->left == current_child) {
         parent->left = new_child;
     }
     else {
@@ -93,15 +97,12 @@ void rotate_right(RBNode *node)
     node->color = red;
 }
 
-/*
- * Invoked when the right and left children are red
- * to preserve invariants
- */
 void flip_colors(RBNode *node)
 {
-    node->color = red;
-    node->left->color = black;
-    node->right->color = red;
+    assert(node->color != node->left->color && node->left->color == node->right->color);
+    node->color = node->color == red? black : red;
+    node->left->color = node->left->color == red ? black : red;
+    node->right->color = node->right->color == red ? black : red;
 }
 
 void create_node_right(RBNode *node, ContactInfo *data)
@@ -134,29 +135,25 @@ void create_root(ContactTree *tree, ContactInfo *data)
     tree->root->color = black;
 }
 
-void destroy_tree_and_data(ContactTree *contact_tree)
-{
-    RBNode *root = contact_tree->root;
-    destroy_node_and_data(root);
-    free(contact_tree_ptr);
-}
+
+// Tree destruction functions
 
 void destroy_node_and_data(RBNode *node)
 {
     if(node == NULL) {
         return;
     }
-    destroy_node(node->left);
-    destroy_node(node->right);
-    free(node->data);
+    destroy_node_and_data(node->left);
+    destroy_node_and_data(node->right);
+    free(node->contact_data);
     free(node);
 }
 
-void destroy_tree(ContactTree *contact_tree)
+void destroy_tree_and_data(ContactTree *contact_tree)
 {
     RBNode *root = contact_tree->root;
-    destroy_node(root);
-    free(contact_tree_ptr);
+    destroy_node_and_data(root);
+    free(contact_tree);
 }
 
 void destroy_node(RBNode *node)
@@ -169,6 +166,14 @@ void destroy_node(RBNode *node)
     free(node);
 }
 
+void destroy_tree(ContactTree *contact_tree)
+{
+    RBNode *root = contact_tree->root;
+    destroy_node(root);
+    free(contact_tree);
+}
+
+// Initialization and helper
 void set_comparator(ContactTree *contact_tree)
 {
     switch(contact_tree->key) {
@@ -179,14 +184,14 @@ void set_comparator(ContactTree *contact_tree)
             contact_tree->comparator = by_birthdate;
             break;
         case mail:
-            contact_tree->comparator = by_mail
+            contact_tree->comparator = by_mail;
             break;
         case phone:
             contact_tree->comparator = by_phone;
             break;
         default:
             fprintf(stderr, "Fatal error - contact tree key not found. Aborting...");
-            destroy_tree_and_data(&contact_tree);
+            destroy_tree_and_data(contact_tree);
             exit(EXIT_FAILURE);
     }
 }
@@ -223,15 +228,17 @@ ContactInfo *create_dummy_info(Key key, char *search_key)
             break;
         //TODO: default?
     }
+    return dummy_info;
 }
 
+// Rebuilding helpers
 void build_new_node(ContactTree *new_tree, RBNode *node)
 {
     if(node == NULL) {
         return;
     }
-    build_new_node(node->left);
-    build_new_node(node->right);
+    build_new_node(new_tree, node->left);
+    build_new_node(new_tree, node->right);
     tree_add(new_tree, node->contact_data);
 }
 
@@ -239,6 +246,108 @@ void build_new_tree(ContactTree *new_tree, ContactTree *old_tree)
 {
     build_new_node(new_tree, old_tree->root);
 }
+
+// Deletion helpers
+
+
+RBNode *fix_upwards(RBNode *current)
+{
+    if(is_red(current->right)) {
+        rotate_left(current);
+        current = current->parent;
+    }
+    if(is_red(current->left) && is_red(current->left->left)) {
+        rotate_right(current);
+        current = current->parent;
+    }
+    if(is_red(current->left) && is_red(current->right)) {
+        flip_colors(current);
+    }
+    return current;
+}
+
+RBNode *move_red_left(RBNode *current)
+{
+    flip_colors(current);
+    if(current->right != NULL && is_red(current->right->left)) {
+        rotate_right(current->right->left);
+        rotate_left(current->right);
+        flip_colors(current);
+    }
+
+    return current;
+}
+
+RBNode *move_red_right(RBNode *current)
+{
+    flip_colors(current);
+    if(current->left != NULL && is_red(current->left->left)) {
+        rotate_right(current);
+        current = current->parent;
+        flip_colors(current);
+    }
+
+    return current;
+}
+
+RBNode *find_min(RBNode *current)
+{
+    while(current->left != NULL) {
+        current = current->left;
+    }
+
+    return current;
+}
+
+RBNode *delete_min(RBNode *min)
+{
+    if(min->left == NULL) {
+        free(min);
+        return NULL;
+    }
+    if(!is_red(min->left) && !is_red(min->left->left)) {
+        min = move_red_left(min);
+    }
+    min->left = delete_min(min->left);
+    
+    return fix_upwards(min);
+}
+
+RBNode *delete_node(RBNode *current, ContactInfo *data, int (*comparator)(ContactInfo *left, ContactInfo *right))
+{
+    if(comparator(data, current->contact_data) < 0) {
+        if(current->left != NULL) {
+            if(!is_red(current->left) && !is_red(current->left->left)) {
+                current = move_red_left(current);
+            }
+            current->left = delete_node(current->left, data, comparator);
+        }
+    }
+    else {
+        if(is_red(current->left)) {
+            rotate_right(current);
+            current = current->parent;
+        }
+        if(!comparator(data, current->contact_data) && current->right == NULL) {
+            free(current);
+            return NULL;
+        }
+        if(current->right != NULL) {
+            if(!is_red(current->right) && !is_red(current->right->left)) {
+                current = move_red_right(current);
+            }
+            if(!comparator(data, current->contact_data)) {
+                current->contact_data = find_min(current->right)->contact_data;
+                current->right = delete_min(current->right);
+            }
+            else {
+                current->right = delete_node(current->right, data, comparator);
+            }
+        }
+    }
+    return fix_upwards(current);
+}
+
 
 /*
  *  API FUNCTIONS
@@ -277,26 +386,29 @@ void tree_add(ContactTree *tree, ContactInfo *data)
     while(current != tree->root) {
         if(!is_red(current->left) && is_red(current->right)) {
             rotate_left(current);
-            current = current->parent;
         }
-        if(is_red(current->left) && is_red(current->current->left)) {
+        if(is_red(current->left) && is_red(current->left->left)) {
             rotate_right(current);
-            current = current->parent;
         }
         if(is_red(current->left) && is_red(current->right)) {
             flip_colors(current);
-            current = current->parent;
         }
+        current = current->parent;
     }
-    root->color = black;    // Root is always black
+    tree->root->color = black;    // Root is always black
 }
 
 bool tree_remove(ContactTree *tree, ContactInfo *data)
 {
-    return false;   //TODO
+    if(tree->root == NULL) {
+        return false;
+    }
+    tree->root = delete_node(tree->root, data, tree->comparator);
+    tree->root->color = black;
+    return true;
 }
 
-// Tree find function assumes the given search key is valid, possible TODO: change
+// Tree find function assumes the given search key is valid
 ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
 {
     if(tree->key != key) {
@@ -310,16 +422,16 @@ ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
     ContactInfo *to_compare = create_dummy_info(key, search_key);
 
     while(current != NULL) {
-        if(tree->comparator(to_compare, current->data) > 0) {
+        if(tree->comparator(to_compare, current->contact_data) > 0) {
             // Data bigger than current, go right
             current = current->right;
         }
-        else if(tree->comparator(to_compare, current->data) < 0) {
+        else if(tree->comparator(to_compare, current->contact_data) < 0) {
             // Data smaller than current, go left
             current = current->left;
         }
         else {
-            to_return = current->data;
+            to_return = current->contact_data;
             break;
         }
     }

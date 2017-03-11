@@ -26,8 +26,8 @@ typedef struct ContactInfo {
     char name[20];
     char surname[20];
     char birthdate[9];
-    char email[256];
-    char telephone_number[10];
+    char mail[256];
+    char phone[10];
     Address address;
 } ContactInfo;
 

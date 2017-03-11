@@ -11,14 +11,14 @@
 
 typedef struct ContactNode {
     ContactInfo *contact_data;
-    ContactNode *prev;
-    ContactNode *next;
+    struct ContactNode *prev;
+    struct ContactNode *next;
 } ContactNode;
 
 typedef struct ContactList {
     ContactNode *first;
     ContactNode *last;
-}
+} ContactList;
 
 void list_add(ContactList *contact_list, ContactInfo *contact_info);
 bool list_remove(ContactList *contact_list, ContactInfo *contact_info);
@@ -33,9 +33,9 @@ typedef enum {red, black} Color;
 typedef enum {surname, birthdate, mail, phone} Key;
 
 typedef struct RBNode {
-    RBNode *parent;
-    RBNode *left;
-    RBNode *right;
+    struct RBNode *parent;
+    struct RBNode *left;
+    struct RBNode *right;
     Color color;
     ContactInfo *contact_data;
 } RBNode;
@@ -51,7 +51,7 @@ typedef struct ContactTree {
     RBNode *root;
     Key key;
     int (*comparator)(ContactInfo *left, ContactInfo *right);
-}
+} ContactTree;
 
 ContactTree *tree_init(Key key);
 void tree_add(ContactTree *contact_tree, ContactInfo *contact_info);
