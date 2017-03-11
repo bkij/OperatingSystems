@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall
 
-all: libcontact_static libcontact_shared
+all: libcontact_static libcontact_dynamic
 
 libcontact_static: contact_book.c
 	$(CC) $(CFLAGS) -c %^ -o $@.o
