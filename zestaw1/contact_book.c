@@ -8,7 +8,13 @@
  * List functions implementations
  */
 
-
+ContactList *list_init()
+{
+    ContactList *list = malloc(sizeof(ContactList));
+    list->first = NULL;
+    list->last = NULL;
+    return list;
+}
 
 
 

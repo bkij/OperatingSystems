@@ -20,6 +20,7 @@ typedef struct ContactList {
     ContactNode *last;
 } ContactList;
 
+ContactList *list_init();
 void list_add(ContactList *contact_list, ContactInfo *contact_info);
 bool list_remove(ContactList *contact_list, ContactInfo *contact_info);
 ContactInfo *list_find(ContactList *contact_list, ContactInfo *contact_info);
