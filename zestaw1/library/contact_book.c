@@ -5,6 +5,52 @@
 #include "contact_book.h"
 
 /*
+ * Generic functions
+ */
+
+int (*get_comparator(Key key))(ContactInfo *, ContactInfo *)
+{
+    switch(key) {
+        case surname:
+            return by_surname;
+        case mail:
+            return by_mail;
+        case phone:
+            return by_phone;
+        case birthdate:
+            return by_birthdate;
+        default:
+            return NULL;
+    }
+}
+
+
+ContactInfo *create_dummy_info(Key key, char *search_key)
+{
+    ContactInfo *dummy_info = malloc(sizeof(ContactInfo));
+    switch(key) {
+        case surname:
+            strncpy(dummy_info->surname, search_key, sizeof(dummy_info->surname));
+            dummy_info->surname[sizeof(dummy_info->surname) - 1] = '\0';
+            break;
+        case birthdate:
+            strncpy(dummy_info->birthdate, search_key, sizeof(dummy_info->birthdate));
+            dummy_info->birthdate[sizeof(dummy_info->birthdate) - 1] = '\0';
+            break;
+        case mail:
+            strncpy(dummy_info->mail, search_key, sizeof(dummy_info->mail));
+            dummy_info->mail[sizeof(dummy_info->mail) - 1] = '\0';
+            break;
+        case phone:
+            strncpy(dummy_info->phone, search_key, sizeof(dummy_info->phone));
+            dummy_info->phone[sizeof(dummy_info->phone) - 1] = '\0';
+            break;
+        //TODO: default?
+    }
+    return dummy_info;
+}
+
+/*
  * List functions implementations
  */
 
@@ -16,7 +62,7 @@ ContactNode *node_find_min(ContactNode *current, int (*comparator)(ContactInfo *
 {
     ContactNode *min = current;
     while(current != NULL) {
-        if(comparator(current, min) < 0) {
+        if(comparator(current->contact_data, min->contact_data) < 0) {
             min = current;
         }
         current = current->next;
@@ -31,7 +77,7 @@ void insert(ContactNode **sorted_begin, ContactNode **sorted_end, ContactNode *m
         current = current->next;
     }
     // Insert node at the beginning
-    if(current == sorted_begin) {
+    if(current == *sorted_begin) {
         sorted_begin = &min;
         (*sorted_begin)->next = current;
         current->prev = *sorted_begin;
@@ -62,11 +108,11 @@ ContactList *list_init()
 void list_add(ContactList *list, ContactInfo *contact_info)
 {
     if(list->first == NULL) {
-        first = malloc(sizeof(ContactNode));
-        first->prev = NULL;
-        first->next = NULL;
-        first->contact_data = current_info;
-        list->last = first;
+        list->first = malloc(sizeof(ContactNode));
+        list->first->prev = NULL;
+        list->first->next = NULL;
+        list->first->contact_data = contact_info;
+        list->last = list->first;
     }
     else {
         list->last->next = malloc(sizeof(ContactNode));
@@ -85,7 +131,6 @@ void list_remove(ContactList *list, ContactInfo *contact_info)
             if(current->prev == NULL) {
                 // Contact info found at the beginning of the list
                 list->first = current->next;
-                removed = true;
                 break;
             }
             current->prev->next = current->next;
@@ -94,20 +139,26 @@ void list_remove(ContactList *list, ContactInfo *contact_info)
         current = current->next;
     }
     free(current);
-    return removed;
 }
 
-ContactInfo *list_find(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right), char *search_key)
+ContactInfo *list_find(ContactList *list, Key key, char *search_key)
 {
+    int (*comparator)(ContactInfo *, ContactInfo *) = get_comparator(key);
+    assert(comparator != NULL);
+    
+    ContactInfo *search_key_container = create_dummy_info(key, search_key);
     ContactNode *current = list->first;
-    while(current != NULL && comparator(search_key, current->contact_data)) {
+    while(current != NULL && comparator(search_key_container, current->contact_data)) {
         current = current->next;
     }
+    free(search_key_container);
     return current == NULL ? NULL : current->contact_data;
 }
 
-void list_sort(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right))
+void list_sort(ContactList *list, Key key) 
 {
+    int (*comparator)(ContactInfo *, ContactInfo *) = get_comparator(key);
+    assert(comparator != NULL);
     ContactNode *sorted_begin = list->first;
     ContactNode *sorted_end = list->first;
     while(sorted_end->next != NULL) {
@@ -313,30 +364,6 @@ ContactTree *tree_init(Key key)
     return contact_tree;
 }
 
-ContactInfo *create_dummy_info(Key key, char *search_key)
-{
-    ContactInfo *dummy_info = malloc(sizeof(ContactInfo));
-    switch(key) {
-        case surname:
-            strncpy(dummy_info->surname, search_key, sizeof(dummy_info->surname));
-            dummy_info->surname[sizeof(dummy_info->surname) - 1] = '\0';
-            break;
-        case birthdate:
-            strncpy(dummy_info->birthdate, search_key, sizeof(dummy_info->birthdate));
-            dummy_info->birthdate[sizeof(dummy_info->birthdate) - 1] = '\0';
-            break;
-        case mail:
-            strncpy(dummy_info->mail, search_key, sizeof(dummy_info->mail));
-            dummy_info->mail[sizeof(dummy_info->mail) - 1] = '\0';
-            break;
-        case phone:
-            strncpy(dummy_info->phone, search_key, sizeof(dummy_info->phone));
-            dummy_info->phone[sizeof(dummy_info->phone) - 1] = '\0';
-            break;
-        //TODO: default?
-    }
-    return dummy_info;
-}
 
 // Rebuilding helpers
 void build_new_node(ContactTree *new_tree, RBNode *node)
@@ -529,7 +556,6 @@ ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
 
     // Create temporary ContactInfo structure to re-use comparator functions
     ContactInfo *to_compare = create_dummy_info(key, search_key);
-
     while(current != NULL) {
         if(tree->comparator(to_compare, current->contact_data) > 0) {
             // Data bigger than current, go right

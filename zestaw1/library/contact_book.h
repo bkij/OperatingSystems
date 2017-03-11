@@ -4,6 +4,11 @@
 #include <stdbool.h>
 #include "contact_info.h"
 
+/*
+ * Generic helpers
+ */
+typedef enum {surname, birthdate, mail, phone} Key;
+int (*get_comparator(Key key))(ContactInfo *, ContactInfo*);
 
 /*
  * List data structure and functions
@@ -22,16 +27,15 @@ typedef struct ContactList {
 
 ContactList *list_init();
 void list_add(ContactList *list, ContactInfo *contact_info);
-bool list_remove(ContactList *list, ContactInfo *contact_info);
-ContactInfo *list_find(ContactList *list, int (*comparator)(CurrentInfo *left, CurrentInfo *right), char *search_key);
-void list_sort(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right));
+void list_remove(ContactList *list, ContactInfo *contact_info);
+ContactInfo *list_find(ContactList *list, Key key, char *search_key);
+void list_sort(ContactList *list, Key key);
 
 /*
  * Tree data structure and functions
  */
 
 typedef enum {red, black} Color;
-typedef enum {surname, birthdate, mail, phone} Key;
 
 typedef struct RBNode {
     struct RBNode *parent;
