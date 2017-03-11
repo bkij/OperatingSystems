@@ -4,7 +4,7 @@ CFLAGS=-Wall
 all: libcontact_static libcontact_dynamic
 
 libcontact_static: contact_book.c
-	$(CC) $(CFLAGS) -c %^ -o $@.o
+	$(CC) $(CFLAGS) -c $^ -o $@.o
 	ar crs $@.a $A.o
 
 libcontact_dynamic: contact_book.c
