@@ -134,6 +134,24 @@ void create_root(ContactTree *tree, ContactInfo *data)
     tree->root->color = black;
 }
 
+void destroy_tree_and_data(ContactTree *contact_tree)
+{
+    RBNode *root = contact_tree->root;
+    destroy_node_and_data(root);
+    free(contact_tree_ptr);
+}
+
+void destroy_node_and_data(RBNode *node)
+{
+    if(node == NULL) {
+        return;
+    }
+    destroy_node(node->left);
+    destroy_node(node->right);
+    free(node->data);
+    free(node);
+}
+
 void destroy_tree(ContactTree *contact_tree)
 {
     RBNode *root = contact_tree->root;
@@ -148,7 +166,6 @@ void destroy_node(RBNode *node)
     }
     destroy_node(node->left);
     destroy_node(node->right);
-    free(node->data);
     free(node);
 }
 
@@ -169,7 +186,7 @@ void set_comparator(ContactTree *contact_tree)
             break;
         default:
             fprintf(stderr, "Fatal error - contact tree key not found. Aborting...");
-            destroy(&contact_tree);
+            destroy_tree_and_data(&contact_tree);
             exit(EXIT_FAILURE);
     }
 }
@@ -206,6 +223,21 @@ ContactInfo *create_dummy_info(Key key, char *search_key)
             break;
         //TODO: default?
     }
+}
+
+void build_new_node(ContactTree *new_tree, RBNode *node)
+{
+    if(node == NULL) {
+        return;
+    }
+    build_new_node(node->left);
+    build_new_node(node->right);
+    tree_add(new_tree, node->contact_data);
+}
+
+void build_new_tree(ContactTree *new_tree, ContactTree *old_tree)
+{
+    build_new_node(new_tree, old_tree->root);
 }
 
 /*
@@ -296,9 +328,10 @@ ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
     return to_return;
 }
 
-void tree_rebuild(ContactTree *tree, Key key)
+ContactTree *tree_rebuild(ContactTree *tree, Key key)
 {
-    tree->key = key;
-    set_comparator(tree);
-    //TODO
+    ContactTree *new_tree = tree_init(key);
+    build_new_tree(new_tree, tree);
+    destroy_tree(tree);
+    return new_tree;
 }

@@ -56,10 +56,6 @@ typedef struct ContactTree {
 ContactTree *tree_init(Key key);
 void tree_add(ContactTree *contact_tree, ContactInfo *contact_info);
 bool tree_remove(ContactTree *contact_tree, ContactInfo *contact_info);
-ContactInfo *tree_find(ContactTree *contact_tree, char *search_key);
-
-/*
- * Rebuild using comparator from contact_info.h
- */
-void tree_rebuild(ContactTree *contact_tree, Key key); 
+ContactInfo *tree_find(ContactTree *contact_tree, Key key, char *search_key);
+ContactTree *tree_rebuild(ContactTree *contact_tree, Key key); 
 #endif
