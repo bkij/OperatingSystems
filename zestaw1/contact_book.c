@@ -20,6 +20,10 @@
  * http://algs4.cs.princeton.edu/home/
  */
 
+/*
+ *  HELPER FUNCTIONS
+ */
+
 bool is_red(RBNode *node)
 {
     if(node == NULL) {
@@ -51,7 +55,7 @@ void parent_set_child(RBNode *current_child, RBNode *new_child)
  * Rotates a temporary node with a right red child
  * to a node with a left red child
  */
-void left_rotate(RBNode *node)
+void rotate_left(RBNode *node)
 {
     assert(is_red(node->right));
 
@@ -130,6 +134,24 @@ void create_root(ContactTree *tree, ContactInfo *data)
     tree->root->color = black;
 }
 
+void destroy_tree(ContactTree *contact_tree)
+{
+    RBNode *root = contact_tree->root;
+    destroy_node(root);
+    free(contact_tree_ptr);
+}
+
+void destroy_node(RBNode *node)
+{
+    if(node == NULL) {
+        return;
+    }
+    destroy_node(node->left);
+    destroy_node(node->right);
+    free(node->data);
+    free(node);
+}
+
 void set_comparator(ContactTree *contact_tree)
 {
     switch(contact_tree->key) {
@@ -147,7 +169,7 @@ void set_comparator(ContactTree *contact_tree)
             break;
         default:
             fprintf(stderr, "Fatal error - contact tree key not found. Aborting...");
-            destroy_deallocate(contact_tree);
+            destroy(&contact_tree);
             exit(EXIT_FAILURE);
     }
 }
@@ -161,6 +183,34 @@ ContactTree *tree_init(Key key)
 
     return contact_tree;
 }
+
+ContactInfo *create_dummy_info(Key key, char *search_key)
+{
+    ContactInfo *dummy_info = malloc(sizeof(ContactInfo));
+    switch(key) {
+        case surname:
+            strncpy(dummy_info->surname, search_key, sizeof(dummy_info->surname));
+            dummy_info->surname[sizeof(dummy_info->surname) - 1] = '\0';
+            break;
+        case birthdate:
+            strncpy(dummy_info->birthdate, search_key, sizeof(dummy_info->birthdate));
+            dummy_info->birthdate[sizeof(dummy_info->birthdate) - 1] = '\0';
+            break;
+        case mail:
+            strncpy(dummy_info->mail, search_key, sizeof(dummy_info->mail));
+            dummy_info->mail[sizeof(dummy_info->mail) - 1] = '\0';
+            break;
+        case phone:
+            strncpy(dummy_info->phone, search_key, sizeof(dummy_info->phone));
+            dummy_info->phone[sizeof(dummy_info->phone) - 1] = '\0';
+            break;
+        //TODO: default?
+    }
+}
+
+/*
+ *  API FUNCTIONS
+ */
 
 void tree_add(ContactTree *tree, ContactInfo *data)
 {
@@ -211,6 +261,44 @@ void tree_add(ContactTree *tree, ContactInfo *data)
 
 bool tree_remove(ContactTree *tree, ContactInfo *data)
 {
+    return false;   //TODO
 }
 
-ContactInfo *tree_find(
+// Tree find function assumes the given search key is valid, possible TODO: change
+ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
+{
+    if(tree->key != key) {
+        fprintf(stderr, "Key given to search function and tree key don't match\n");
+        return NULL;
+    }
+    ContactInfo *to_return = NULL;
+    RBNode *current = tree->root;
+
+    // Create temporary ContactInfo structure to re-use comparator functions
+    ContactInfo *to_compare = create_dummy_info(key, search_key);
+
+    while(current != NULL) {
+        if(tree->comparator(to_compare, current->data) > 0) {
+            // Data bigger than current, go right
+            current = current->right;
+        }
+        else if(tree->comparator(to_compare, current->data) < 0) {
+            // Data smaller than current, go left
+            current = current->left;
+        }
+        else {
+            to_return = current->data;
+            break;
+        }
+    }
+
+    free(to_compare);
+    return to_return;
+}
+
+void tree_rebuild(ContactTree *tree, Key key)
+{
+    tree->key = key;
+    set_comparator(tree);
+    //TODO
+}

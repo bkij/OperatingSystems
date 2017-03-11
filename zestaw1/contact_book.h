@@ -30,6 +30,7 @@ void list_sort(ContactList *contact_list, int (*comparator)(ContactInfo *left, C
  */
 
 typedef enum {red, black} Color;
+typedef enum {surname, birthdate, mail, phone} Key;
 
 typedef struct RBNode {
     RBNode *parent;
@@ -39,14 +40,26 @@ typedef struct RBNode {
     ContactInfo *contact_data;
 } RBNode;
 
+/*
+ * Tree contains a key and a comparator
+ * for the key
+ *
+ * There can only be one ContactInfo data with
+ * the given key at a time in the structue
+ */
 typedef struct ContactTree {
     RBNode *root;
-
+    Key key;
+    int (*comparator)(ContactInfo *left, ContactInfo *right);
 }
 
+ContactTree *tree_init(Key key);
 void tree_add(ContactTree *contact_tree, ContactInfo *contact_info);
 bool tree_remove(ContactTree *contact_tree, ContactInfo *contact_info);
-ContactInfo *tree_find(ContactTree *contact_tree, ContactInfo *contact_info);
+ContactInfo *tree_find(ContactTree *contact_tree, char *search_key);
 
-void tree_rebuild(ContactTree *contact_tree, key rebuild_key);
+/*
+ * Rebuild using comparator from contact_info.h
+ */
+void tree_rebuild(ContactTree *contact_tree, Key key); 
 #endif

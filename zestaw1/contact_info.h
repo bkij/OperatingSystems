@@ -7,24 +7,27 @@
  *  The longest city name in Poland has 30 characters
  *
  *  Street number assumes the numbers themself are no more
- *  than 4 digits long + a letter
+ *  than 4 digits long + a letter + \0
+ *
+ *  Postal code format: xx-xxx\0
  */
 typedef struct Address {
     char street_name[256];
-    char street_number[5];
-    char postal_code[6];
+    char street_number[6];
+    char postal_code[7];
     char city[31];
 } Address;
 
 /*
- * Date of birth in DDMMYYYY format
+ * Date of birth in DDMMYYYY\0 format 
+ * Telephone number in xxxxxxxxx\0 format
  */
 typedef struct ContactInfo {
     char name[20];
     char surname[20];
-    char date_of_birth[8];
+    char birthdate[9];
     char email[256];
-    char telephone_number[9];
+    char telephone_number[10];
     Address address;
 } ContactInfo;
 
