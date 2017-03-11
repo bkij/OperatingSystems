@@ -1,5 +1,7 @@
 *.info
 *.o
+*.so
+*.a
 *.ko
 *.obj
 *.elf
