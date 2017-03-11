@@ -8,6 +8,49 @@
  * List functions implementations
  */
 
+/*
+ *  HELPER FUNCTIONS
+ */
+
+ContactNode *node_find_min(ContactNode *current, int (*comparator)(ContactInfo *left, ContactInfo *right))
+{
+    ContactNode *min = current;
+    while(current != NULL) {
+        if(comparator(current, min) < 0) {
+            min = current;
+        }
+        current = current->next;
+    }
+    return min;
+}
+
+void insert(ContactNode **sorted_begin, ContactNode **sorted_end, ContactNode *min, int (*comparator)(ContactInfo *left, ContactInfo *right))
+{
+    ContactNode *current = *sorted_begin;
+    while(current != (*sorted_end)->next, comparator(min->contact_data, current->contact_data) > 0) {
+        current = current->next;
+    }
+    // Insert node at the beginning
+    if(current == sorted_begin) {
+        sorted_begin = &min;
+        (*sorted_begin)->next = current;
+        current->prev = *sorted_begin;
+        return;
+    }
+    // Insert node at the end
+    if(current == (*sorted_end)->next) {
+        (*sorted_end)->next = min;
+        min->prev = *sorted_end;
+        sorted_end = &min;
+    }
+    // Insert in the middle
+    current->prev->next = min;
+    min->next = current;
+}
+
+/*
+ *  API FUNCTIONS
+ */
 ContactList *list_init()
 {
     ContactList *list = malloc(sizeof(ContactList));
@@ -65,6 +108,14 @@ ContactInfo *list_find(ContactList *list, int (*comparator)(ContactInfo *left, C
 
 void list_sort(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right))
 {
+    ContactNode *sorted_begin = list->first;
+    ContactNode *sorted_end = list->first;
+    while(sorted_end->next != NULL) {
+        ContactNode *min = node_find_min(sorted_end->next, comparator);
+        insert(&sorted_begin, &sorted_end, min, comparator);
+    }
+    list->first = sorted_begin;
+    list->last = sorted_end;
 }
 
 
