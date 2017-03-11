@@ -16,6 +16,56 @@ ContactList *list_init()
     return list;
 }
 
+void list_add(ContactList *list, ContactInfo *contact_info)
+{
+    if(list->first == NULL) {
+        first = malloc(sizeof(ContactNode));
+        first->prev = NULL;
+        first->next = NULL;
+        first->contact_data = current_info;
+        list->last = first;
+    }
+    else {
+        list->last->next = malloc(sizeof(ContactNode));
+        list->last->next->prev = list->last->next;
+        list->last->next->next = NULL;
+        list->last->next->contact_data = contact_info;
+        list->last = list->last->next;
+    }
+}
+
+void list_remove(ContactList *list, ContactInfo *contact_info)
+{
+    ContactNode *current = list->first;
+    while(current != NULL) {
+        if(current->contact_data == contact_info) {
+            if(current->prev == NULL) {
+                // Contact info found at the beginning of the list
+                list->first = current->next;
+                removed = true;
+                break;
+            }
+            current->prev->next = current->next;
+            break;
+        }
+        current = current->next;
+    }
+    free(current);
+    return removed;
+}
+
+ContactInfo *list_find(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right), char *search_key)
+{
+    ContactNode *current = list->first;
+    while(current != NULL && comparator(search_key, current->contact_data)) {
+        current = current->next;
+    }
+    return current == NULL ? NULL : current->contact_data;
+}
+
+void list_sort(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right))
+{
+}
 
 
 /*
@@ -359,6 +409,7 @@ RBNode *delete_node(RBNode *current, ContactInfo *data, int (*comparator)(Contac
  *  API FUNCTIONS
  */
 
+// TODO: Update on data already in tree
 void tree_add(ContactTree *tree, ContactInfo *data)
 {
     if(tree->root == NULL) {
@@ -404,6 +455,7 @@ void tree_add(ContactTree *tree, ContactInfo *data)
     tree->root->color = black;    // Root is always black
 }
 
+//TODO: Change to void with equality on address instead of comparator
 bool tree_remove(ContactTree *tree, ContactInfo *data)
 {
     if(tree->root == NULL) {

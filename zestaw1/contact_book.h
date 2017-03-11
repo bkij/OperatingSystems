@@ -21,10 +21,10 @@ typedef struct ContactList {
 } ContactList;
 
 ContactList *list_init();
-void list_add(ContactList *contact_list, ContactInfo *contact_info);
-bool list_remove(ContactList *contact_list, ContactInfo *contact_info);
-ContactInfo *list_find(ContactList *contact_list, ContactInfo *contact_info);
-void list_sort(ContactList *contact_list, int (*comparator)(ContactInfo *left, ContactInfo *right));
+void list_add(ContactList *list, ContactInfo *contact_info);
+bool list_remove(ContactList *list, ContactInfo *contact_info);
+ContactInfo *list_find(ContactList *list, int (*comparator)(CurrentInfo *left, CurrentInfo *right), char *search_key);
+void list_sort(ContactList *list, int (*comparator)(ContactInfo *left, ContactInfo *right));
 
 /*
  * Tree data structure and functions
