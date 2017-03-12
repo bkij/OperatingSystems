@@ -295,6 +295,7 @@ void create_node_right(RBNode *node, ContactInfo *data)
     node->right->left = NULL;
     node->right->right = NULL;
     node->right->color = red;
+    node->right->deleted = false;
 }
 
 void create_node_left(RBNode *node, ContactInfo *data)
@@ -305,6 +306,7 @@ void create_node_left(RBNode *node, ContactInfo *data)
     node->left->left = NULL;
     node->left->right = NULL;
     node->left->color = red;
+    node->left->deleted = false;
 }
 
 void create_root(ContactTree *tree, ContactInfo *data)
@@ -315,6 +317,7 @@ void create_root(ContactTree *tree, ContactInfo *data)
     tree->root->left = NULL;
     tree->root->right = NULL;
     tree->root->color = black;
+    tree->root->deleted = false;
 }
 
 
@@ -405,113 +408,10 @@ void build_new_tree(ContactTree *new_tree, ContactTree *old_tree)
     build_new_node(new_tree, old_tree->root);
 }
 
-// Deletion helpers
-
-
-RBNode *fix_upwards(RBNode *current)
-{
-    if(is_red(current->right)) {
-        rotate_left(current);
-        current = current->parent;
-    }
-    if(is_red(current->left) && is_red(current->left->left)) {
-        rotate_right(current);
-        current = current->parent;
-    }
-    if(is_red(current->left) && is_red(current->right)) {
-        flip_colors(current);
-    }
-    return current;
-}
-
-RBNode *move_red_left(RBNode *current)
-{
-    flip_colors(current);
-    if(current->right != NULL && is_red(current->right->left)) {
-        rotate_right(current->right->left);
-        rotate_left(current->right);
-        flip_colors(current);
-    }
-
-    return current;
-}
-
-RBNode *move_red_right(RBNode *current)
-{
-    flip_colors(current);
-    if(current->left != NULL && is_red(current->left->left)) {
-        rotate_right(current);
-        current = current->parent;
-        flip_colors(current);
-    }
-
-    return current;
-}
-
-RBNode *find_min(RBNode *current)
-{
-    while(current->left != NULL) {
-        current = current->left;
-    }
-
-    return current;
-}
-
-RBNode *delete_min(RBNode *min)
-{
-    if(min->left == NULL) {
-        free(min);
-        return NULL;
-    }
-    if(!is_red(min->left) && !is_red(min->left->left)) {
-        min = move_red_left(min);
-    }
-    min->left = delete_min(min->left);
-    
-    return fix_upwards(min);
-}
-
-RBNode *delete_node(RBNode *current, ContactInfo *data, int (*comparator)(ContactInfo *left, ContactInfo *right))
-{
-    if(comparator(data, current->contact_data) < 0) {
-        if(current->left != NULL) {
-            if(!is_red(current->left) && !is_red(current->left->left)) {
-                current = move_red_left(current);
-            }
-            current->left = delete_node(current->left, data, comparator);
-        }
-    }
-    else {
-        if(is_red(current->left)) {
-            rotate_right(current);
-            current = current->parent;
-        }
-        if(!comparator(data, current->contact_data) && current->right == NULL) {
-            free(current);
-            return NULL;
-        }
-        if(current->right != NULL) {
-            if(!is_red(current->right) && !is_red(current->right->left)) {
-                current = move_red_right(current);
-            }
-            if(!comparator(data, current->contact_data)) {
-                current->contact_data = find_min(current->right)->contact_data;
-                current->right = delete_min(current->right);
-            }
-            else {
-                current->right = delete_node(current->right, data, comparator);
-            }
-        }
-    }
-    return fix_upwards(current);
-}
-
-
 /*
  *  API FUNCTIONS
  */
 
-// TODO: Update on data already in tree
 void tree_add(ContactTree *tree, ContactInfo *data)
 {
     if(tree->root == NULL) {
@@ -537,7 +437,8 @@ void tree_add(ContactTree *tree, ContactInfo *data)
         }
         else {
             // Given data already in the tree
-            printf("Data already in the tree according to current key\n");
+            current->contact_data = data;
+            current->deleted = false;
             return;
         }
     }
@@ -558,14 +459,24 @@ void tree_add(ContactTree *tree, ContactInfo *data)
 }
 
 //TODO: Change to void with equality on address instead of comparator
-bool tree_remove(ContactTree *tree, ContactInfo *data)
+void tree_remove(ContactTree *tree, ContactInfo *data)
 {
     if(tree->root == NULL) {
-        return false;
+        return;
     }
-    tree->root = delete_node(tree->root, data, tree->comparator);
-    tree->root->color = black;
-    return true;
+    RBNode *current = tree->root;
+    while(current != NULL) {
+        if(tree->comparator(data, current->contact_data) > 0) {
+            current = current->right;
+        }
+        else if (tree->comparator(data, current->contact_data) < 0) {
+            current = current->left;
+        }
+        else {
+            current->deleted = true;
+            return;
+        }
+    }
 }
 
 // Tree find function assumes the given search key is valid
@@ -590,7 +501,12 @@ ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
             current = current->left;
         }
         else {
-            to_return = current->contact_data;
+            if(current->deleted == true) {
+                to_return = NULL;
+            }
+            else {
+                to_return = current->contact_data;
+            }
             break;
         }
     }

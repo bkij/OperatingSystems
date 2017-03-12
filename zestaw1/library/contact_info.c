@@ -3,7 +3,7 @@
 
 int by_surname(ContactInfo *left, ContactInfo *right)
 {
-    return strncmp(left->name, right->name, sizeof(left->name - 1));
+    return strncmp(left->surname, right->surname, sizeof(left->surname - 1));
 }
 
 int by_birthdate(ContactInfo *left, ContactInfo *right)

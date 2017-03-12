@@ -44,6 +44,7 @@ typedef struct RBNode {
     struct RBNode *left;
     struct RBNode *right;
     Color color;
+    bool deleted;
     ContactInfo *contact_data;
 } RBNode;
 
@@ -62,7 +63,7 @@ typedef struct ContactTree {
 
 ContactTree *tree_init(Key key);
 void tree_add(ContactTree *contact_tree, ContactInfo *contact_info);
-bool tree_remove(ContactTree *contact_tree, ContactInfo *contact_info);
+void tree_remove(ContactTree *contact_tree, ContactInfo *contact_info);
 ContactInfo *tree_find(ContactTree *contact_tree, Key key, char *search_key);
 ContactTree *tree_rebuild(ContactTree *contact_tree, Key key); 
 void destroy_tree_and_data(ContactTree *contact_tree);

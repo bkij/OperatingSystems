@@ -1,15 +1,19 @@
 CC=gcc
 CFLAGS=-Wall
 
-all: libcontact_static libcontact_dynamic
+all: libcontact_static_object libcontact_dynamic_object libcontact_static libcontact_dynamic
 
-libcontact_static: contact_book.c
-	$(CC) $(CFLAGS) -c $^ -o $@.o
-	ar crs $@.a $@.o
+libcontact_static_object: contact_book.c contact_info.h
+	$(CC) $(CFLAGS) -c $^
 
-libcontact_dynamic: contact_book.c
-	$(CC) $(CFLAGS) -fPIC -c $^ -o $@.o
-	$(CC) -shared $@.o -o $@.so
+libcontact_static: contact_book.o contact_info.o
+	ar crs $@.a $^
+
+libcontact_dynamic_object: contact_book.c contact_info.c
+	$(CC) $(CFLAGS) -fPIC -c $^
+
+libcontact_dynamic: contact_book.o contact_info.o
+	$(CC) -shared $^ -o $@.so
 
 clean:
 	rm -f *.a *.o *.so
