@@ -30,6 +30,8 @@ void list_add(ContactList *list, ContactInfo *contact_info);
 void list_remove(ContactList *list, ContactInfo *contact_info);
 ContactInfo *list_find(ContactList *list, Key key, char *search_key);
 void list_sort(ContactList *list, Key key);
+void destroy_list_and_data(ContactList *list);
+void destroy_list(ContactList *list);
 
 /*
  * Tree data structure and functions
@@ -63,4 +65,6 @@ void tree_add(ContactTree *contact_tree, ContactInfo *contact_info);
 bool tree_remove(ContactTree *contact_tree, ContactInfo *contact_info);
 ContactInfo *tree_find(ContactTree *contact_tree, Key key, char *search_key);
 ContactTree *tree_rebuild(ContactTree *contact_tree, Key key); 
+void destroy_tree_and_data(ContactTree *contact_tree);
+void destroy_tree(ContactTree *contact_tree);
 #endif

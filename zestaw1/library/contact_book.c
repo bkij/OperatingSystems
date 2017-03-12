@@ -94,6 +94,30 @@ void insert(ContactNode **sorted_begin, ContactNode **sorted_end, ContactNode *m
     min->next = current;
 }
 
+void destroy_list_and_data(ContactList *list)
+{
+    ContactNode *current = list->last;
+    while(current->prev != NULL) {
+        current = current->prev;
+        free(current->next->contact_data);
+        free(current->next);
+    }
+    free(list->first->contact_data);
+    free(list->first);
+    free(list);
+}
+
+void destroy_list(ContactList *list)
+{
+    ContactNode *current = list->last;
+    while(current->prev != NULL) {
+        current = current->prev;
+        free(current->next);
+    }
+    free(list->first);
+    free(list);
+}
+
 /*
  *  API FUNCTIONS
  */
