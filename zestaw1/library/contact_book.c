@@ -110,11 +110,13 @@ void destroy_list_and_data(ContactList *list)
 void destroy_list(ContactList *list)
 {
     ContactNode *current = list->last;
-    while(current->prev != NULL) {
+    while(current != NULL && current->prev != NULL) {
         current = current->prev;
         free(current->next);
     }
-    free(list->first);
+    if(current != NULL) {
+        free(list->first);
+    }
     free(list);
 }
 
@@ -131,19 +133,19 @@ ContactList *list_init()
 
 void list_add(ContactList *list, ContactInfo *contact_info)
 {
+    ContactNode *tmp = malloc(sizeof(ContactNode));
+    tmp->next = NULL;
+    tmp->contact_data = contact_info;
+
     if(list->first == NULL) {
-        list->first = malloc(sizeof(ContactNode));
+        list->first = tmp;
         list->first->prev = NULL;
-        list->first->next = NULL;
-        list->first->contact_data = contact_info;
         list->last = list->first;
     }
     else {
-        list->last->next = malloc(sizeof(ContactNode));
-        list->last->next->prev = list->last->next;
-        list->last->next->next = NULL;
-        list->last->next->contact_data = contact_info;
-        list->last = list->last->next;
+        tmp->prev = list->last;
+        list->last->next = tmp;
+        list->last = tmp;
     }
 }
 
@@ -155,14 +157,24 @@ void list_remove(ContactList *list, ContactInfo *contact_info)
             if(current->prev == NULL) {
                 // Contact info found at the beginning of the list
                 list->first = current->next;
+                list->first->prev = NULL;
+                break;
+            }
+            if(current->next == NULL) {
+                // Contact info found at the end of the list
+                list->last = current->prev;
+                list->last->next = NULL;
                 break;
             }
             current->prev->next = current->next;
+            current->next->prev = current->prev;
             break;
         }
         current = current->next;
     }
-    free(current);
+    if(current != NULL) {
+        free(current);
+    }
 }
 
 ContactInfo *list_find(ContactList *list, Key key, char *search_key)
@@ -172,7 +184,7 @@ ContactInfo *list_find(ContactList *list, Key key, char *search_key)
     
     ContactInfo *search_key_container = create_dummy_info(key, search_key);
     ContactNode *current = list->first;
-    while(current != NULL && comparator(search_key_container, current->contact_data)) {
+    while(current != NULL && comparator(search_key_container, current->contact_data) != 0) {
         current = current->next;
     }
     free(search_key_container);
