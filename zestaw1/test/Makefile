@@ -1,13 +1,13 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -std=c99
 
 all: rbtree_test list_test
 
 rbtree_test: rbtree_test.c ../library/libcontact_static.a
-	$(CC) $^ -o $@.out
+	$(CC) $(CFLAGS) $^ -o $@.out
 
 list_test: list_test.c ../library/libcontact_static.a
-	$(CC) $^ -o $@.out
+	$(CC) $(CFLAGS) $^ -o $@.out
 
 runAll: all
 	./rbtree_test.out

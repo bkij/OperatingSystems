@@ -1,9 +1,9 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -std=c99
 
 all: libcontact_static_object libcontact_dynamic_object libcontact_static libcontact_dynamic
 
-libcontact_static_object: contact_book.c contact_info.h
+libcontact_static_object: contact_book.c contact_info.c
 	$(CC) $(CFLAGS) -c $^
 
 libcontact_static: contact_book.o contact_info.o
