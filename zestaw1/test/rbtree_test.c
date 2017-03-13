@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <malloc.h>
 
 int main()
 {
@@ -35,5 +36,31 @@ int main()
     assert(tree_find(tree2, surname, "Kowalski") == NULL);
 
     destroy_tree(tree2);
+    printf("Checking tree rebuilding...\n");
+    ContactTree *tree3 = tree_init(surname);
+
+    ContactInfo *dummy_info3 = malloc(sizeof(ContactInfo));
+    ContactInfo *dummy_info4 = malloc(sizeof(ContactInfo));
+
+    strncpy(dummy_info3->surname, "Kowalski", strlen("Kowalski"));
+    dummy_info3->surname[8] = '\0';
+    strncpy(dummy_info3->birthdate, "04121995", strlen("04121995"));
+    dummy_info3->birthdate[9] = '\0';
+
+    strncpy(dummy_info4->surname, "Zalewski", strlen("Zalewski"));
+    dummy_info4->surname[8] = '\0';
+    strncpy(dummy_info4->birthdate, "01121995", strlen("01121995"));
+    dummy_info4->birthdate[9] = '\0';
+
+    tree_add(tree3, dummy_info3);
+    tree_add(tree3, dummy_info4);
+
+    printf("Rebuilding...\n");
+    tree3 = tree_rebuild(tree3, birthdate);
+    assert(tree3->root->contact_data == dummy_info4);
+    assert(tree3->root->right->contact_data == dummy_info3);
+
+    printf("Checking destruction with data...\n");
+    destroy_tree_and_data(tree3);
     return 0;
 }

@@ -67,27 +67,45 @@ ContactNode *node_find_min(ContactNode *current, int (*comparator)(ContactInfo *
         }
         current = current->next;
     }
+    if(min->prev != NULL) {
+        min->prev->next = min->next;
+    }
+    if(min->next != NULL) {
+        min->next->prev = min->prev;
+    }
     return min;
 }
 
 void insert(ContactNode **sorted_begin, ContactNode **sorted_end, ContactNode *min, int (*comparator)(ContactInfo *left, ContactInfo *right))
 {
     ContactNode *current = *sorted_begin;
-    while(current != (*sorted_end)->next && comparator(min->contact_data, current->contact_data) > 0) {
+    ContactNode *tmp;
+    while(current != *sorted_end && comparator(min->contact_data, current->contact_data) > 0) {
         current = current->next;
     }
     // Insert node at the beginning
     if(current == *sorted_begin) {
-        sorted_begin = &min;
+        *sorted_begin = min;
         (*sorted_begin)->next = current;
+        (*sorted_begin)->prev = NULL;
         current->prev = *sorted_begin;
         return;
     }
     // Insert node at the end
-    if(current == (*sorted_end)->next) {
-        (*sorted_end)->next = min;
-        min->prev = *sorted_end;
-        sorted_end = &min;
+    if(current == *sorted_end) {
+        if(comparator(min->contact_data, current->contact_data) >= 0) {
+            // Insert after current sorted_end
+            tmp = (*sorted_end)->next;
+            (*sorted_end)->next = min;
+            min->prev = *sorted_end;
+            *sorted_end = min;
+            min->next = tmp;
+        }
+        else {
+            (*sorted_end)->prev->next = min;
+            min->next = *sorted_end;
+        }
+        return;
     }
     // Insert in the middle
     current->prev->next = min;

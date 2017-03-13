@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <malloc.h>
 
 int main()
 {
@@ -39,6 +40,26 @@ int main()
     assert(list2->first->contact_data == &dummy_info2);
     assert(list_find(list2, surname, "Kowalski") == NULL);
 
+    printf("Checking sort...\n");
+    ContactInfo dummy_info3;
+    strncpy(dummy_info3.surname, "Banach", strlen("Banach"));
+    dummy_info3.surname[6] = '\0';
+    list_add(list2, &dummy_info3);
+
+    list_sort(list2, surname);
+    assert(list2->first->contact_data == &dummy_info3);
+    assert(list2->last->contact_data == &dummy_info2);
+    assert(list2->first->next == list2->last);
+
     destroy_list(list2);
+
+    printf("Checking destruction with data...\n");
+    ContactList *list3 = list_init();
+    ContactInfo *dummy_info4 = malloc(sizeof(ContactInfo));
+    ContactInfo *dummy_info5 = malloc(sizeof(ContactInfo));
+    list_add(list3, dummy_info4);
+    list_add(list3, dummy_info5);
+
+    destroy_list_and_data(list3); 
     return 0;
 }
