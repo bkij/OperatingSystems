@@ -2,8 +2,11 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/times.h>
+#include <unistd.h>
 #include "random_data.h"
 #include "../library/contact_book.h"
+
+#define CLK sysconf(_SC_CLK_TCK)
 
 #ifdef DYNAMIC
 
@@ -18,6 +21,7 @@ void run_list_measurements();
 
 #endif
 
+void print_times(struct tms *begin, clock_t clock_curr_before);
 void print_usage();
 ContactInfo *get_mock_info();
 
@@ -42,6 +46,13 @@ int main(int argc, char **argv)
         #endif
     }
     return 0;
+}
+
+void print_times(struct tms *begin, clock_t clock_before)
+{
+    struct tms end;
+    times(&end);
+    printf("Real: %.6f, System: %.6f, User: %.6f\n", (double)(clock() - clock_before) / CLOCKS_PER_SEC, (double)(end.tms_stime - begin->tms_stime) / CLK, (double)(end.tms_utime - begin->tms_utime) / CLK);
 }
 
 void print_usage()
@@ -70,7 +81,6 @@ void run_tree_measurements_dynamic()
 {
     void *library = dlopen("../library/libcontact_dynamic.so", RTLD_LAZY);
     
-
     ContactTree * (*tree_init)(Key);
     tree_init = dlsym(library, "tree_init");
     void (*tree_add)(ContactTree *, ContactInfo *);
@@ -85,47 +95,66 @@ void run_tree_measurements_dynamic()
     destroy_tree_and_data = dlsym(library, "destroy_tree_and_data");
 
     ContactInfo *current_info, *optimistic, *pessimistic;
+    
+    struct tms begin;
+    clock_t clock_curr;
     srand(time(NULL));
     
     printf("Contact tree creation (1000 records):\n");
     ContactTree *tree = tree_init(surname);
     for(int i = 0; i < 1000; i++) {
         current_info = get_mock_info();
-        // TODO: Measure time
+        times(&begin);
+        clock_curr = clock();
         tree_add(tree, current_info);
+        print_times(&begin, clock_curr);
     }
 
     printf("Adding new element:\n");
     printf("(i) Pessimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Zalewski");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_add(tree, current_info);
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Abazur");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_add(tree, current_info);
+    print_times(&begin, clock_curr);
 
     printf("Searching element:\n");
     printf("(i) Pessimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     pessimistic = tree_find(tree, surname, "Zalewski");
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     optimistic = tree_find(tree, surname, "Abazur");
+    print_times(&begin, clock_curr);
 
     printf("Deleting element:\n");
     printf("(i) Pessimistic\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_remove(tree, pessimistic);
+    print_times(&begin, clock_curr);
     printf("(i) Optimistic\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_remove(tree, optimistic);
+    print_times(&begin, clock_curr);
 
     printf("Rebuilding tree:\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree = tree_rebuild(tree, mail);
+    print_times(&begin, clock_curr);
 
     destroy_tree_and_data(tree);
     dlclose(library);
@@ -150,53 +179,73 @@ void run_list_measurements_dynamic()
     destroy_list_and_data = dlsym(library, "destroy_list_and_data");
 
     ContactInfo *current_info, *optimistic, *pessimistic;
+    struct tms begin;
     srand(time(NULL));
+    clock_t clock_curr;
 
     printf("Contact list creation (1000) records):\n");
     ContactList *list = list_init();
     for(int i = 0; i < 1000; i++) {
         current_info = get_mock_info();
-        // TODO: Measure time
+        times(&begin);
+        clock_curr = clock();
         list_add(list, current_info);    
+        print_times(&begin, clock_curr);
     }
 
     printf("Sorting list:\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_sort(list, surname);
+    print_times(&begin, clock_curr);
 
     printf("Adding new element:\n");
     printf("(i) Pessimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Zalewski");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_add(list, current_info);
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Abazur");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_add(list, current_info);
+    print_times(&begin, clock_curr);
 
     printf("Searching element\n");
     printf("(i) Pessimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     pessimistic = list_find(list, surname, "Zalewski");
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     optimistic = list_find(list, surname, "Abazur");
+    print_times(&begin, clock_curr);
 
     printf("Deleting element\n");
     printf("(i) Pessimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_remove(list, pessimistic);
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_remove(list, optimistic);
+    print_times(&begin, clock_curr);
 
     printf("Resorting list\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_sort(list, phone);
-
-    destroy_list_and_data(list);
+    print_times(&begin, clock_curr);
+  
+    destroy_list_and_data(list); 
     dlclose(library);
 }
 #else
@@ -204,47 +253,66 @@ void run_list_measurements_dynamic()
 void run_tree_measurements()
 {
     ContactInfo *current_info, *optimistic, *pessimistic;
+    
+    struct tms begin;
+    clock_t clock_curr;
     srand(time(NULL));
     
     printf("Contact tree creation (1000 records):\n");
     ContactTree *tree = tree_init(surname);
     for(int i = 0; i < 1000; i++) {
         current_info = get_mock_info();
-        // TODO: Measure time
+        times(&begin);
+        clock_curr = clock();
         tree_add(tree, current_info);
+        print_times(&begin, clock_curr);
     }
 
     printf("Adding new element:\n");
     printf("(i) Pessimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Zalewski");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_add(tree, current_info);
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Abazur");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_add(tree, current_info);
+    print_times(&begin, clock_curr);
 
     printf("Searching element:\n");
     printf("(i) Pessimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     pessimistic = tree_find(tree, surname, "Zalewski");
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     optimistic = tree_find(tree, surname, "Abazur");
+    print_times(&begin, clock_curr);
 
     printf("Deleting element:\n");
     printf("(i) Pessimistic\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_remove(tree, pessimistic);
+    print_times(&begin, clock_curr);
     printf("(i) Optimistic\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree_remove(tree, optimistic);
+    print_times(&begin, clock_curr);
 
     printf("Rebuilding tree:\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     tree = tree_rebuild(tree, mail);
+    print_times(&begin, clock_curr);
 
     destroy_tree_and_data(tree);
 }
@@ -252,51 +320,72 @@ void run_tree_measurements()
 void run_list_measurements()
 {
     ContactInfo *current_info, *optimistic, *pessimistic;
+    
+    struct tms begin;
     srand(time(NULL));
+    clock_t clock_curr;
 
     printf("Contact list creation (1000) records):\n");
     ContactList *list = list_init();
-    for(int i = 0; i < 10; i++) {
+    for(int i = 0; i < 1000; i++) {
         current_info = get_mock_info();
-        // TODO: Measure time
+        times(&begin);
+        clock_curr = clock();
         list_add(list, current_info);    
+        print_times(&begin, clock_curr);
     }
 
     printf("Sorting list:\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_sort(list, surname);
+    print_times(&begin, clock_curr);
 
     printf("Adding new element:\n");
     printf("(i) Pessimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Zalewski");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_add(list, current_info);
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
     current_info = get_mock_info();
     strcpy(current_info->surname, "Abazur");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_add(list, current_info);
+    print_times(&begin, clock_curr);
 
     printf("Searching element\n");
     printf("(i) Pessimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     pessimistic = list_find(list, surname, "Zalewski");
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     optimistic = list_find(list, surname, "Abazur");
+    print_times(&begin, clock_curr);
 
     printf("Deleting element\n");
     printf("(i) Pessimistic\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_remove(list, pessimistic);
+    print_times(&begin, clock_curr);
     printf("(ii) Optimistic\n");
-    //TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_remove(list, optimistic);
+    print_times(&begin, clock_curr);
 
     printf("Resorting list\n");
-    // TODO: Measure time
+    times(&begin);
+    clock_curr = clock();
     list_sort(list, phone);
+    print_times(&begin, clock_curr);
 
     destroy_list_and_data(list);
 }
