@@ -1,6 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -std=c99
 
+.PHONY: clean
+
 all: client_static client_dynamic client_shared
 
 client_static: client_coredump.c ../library/libcontact_static.a

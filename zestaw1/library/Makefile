@@ -1,6 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -std=c99
 
+.PHONY: clean
+
 all: libcontact_static_object libcontact_dynamic_object libcontact_static libcontact_dynamic
 
 libcontact_static_object: contact_book.c contact_info.c

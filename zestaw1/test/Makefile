@@ -1,6 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -std=c99
 
+.PHONY: clean
+
 all: rbtree_test list_test
 
 rbtree_test: rbtree_test.c ../library/libcontact_static.a
