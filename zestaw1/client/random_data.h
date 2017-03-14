@@ -1,11 +1,12 @@
 #ifndef RANDOM_DATA_H
 #define RANDOM_DATA_H
 
+#include <string.h>
 #include "../library/contact_info.h"
 
 // Generated with generatedata.com
 
-char *[]surnames = {
+char *surnames[] = {
     "Tyler",
     "Robinson",
     "von Dossaeler",
@@ -106,9 +107,9 @@ char *[]surnames = {
     "Edwards",
     "Golden",
     "Simon"
-}
+};
 
-char *[] names = {
+char *names[] = {
     "Diamond",
     "Lenore",
     "Karly",
@@ -209,7 +210,7 @@ char *[] names = {
     "Clarke",
     "Jaquelyn",
     "Ruby"
-}
+};
 
 char *emails[] = {
     "ante.dictum@sagittis.org",
@@ -312,7 +313,7 @@ char *emails[] = {
     "erat.vel@Fusce.ca",
     "sit@etmagnis.edu",
     "enim.non@fringillaeuismod.net"
-}
+};
 
 char *phones[] = {
     "735340730",
@@ -415,10 +416,9 @@ char *phones[] = {
     "837221601",
     "264498041",
     "355915263"
-}
+};
 
 char *birthdates[] = {
-birthdate
     "09092017",
     "16052016",
     "12032017",
@@ -519,11 +519,8 @@ birthdate
     "01102016",
     "26042016",
     "05062016"
-}
+};
 
-// Address only needed once
+// Address unneeded 
 Address mock_address;
-mock_address.street_name = "Mogilska";
-mock_address.street_number = "23B";
-mock_address.postal_code = "20-345";
-mock_address.city = "Krakow";
+#endif

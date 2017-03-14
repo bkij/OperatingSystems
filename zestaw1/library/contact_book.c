@@ -76,52 +76,52 @@ ContactNode *node_find_min(ContactNode *current, int (*comparator)(ContactInfo *
     return min;
 }
 
-void insert(ContactNode **sorted_begin, ContactNode **sorted_end, ContactNode *min, int (*comparator)(ContactInfo *left, ContactInfo *right))
+void insert(ContactList *list, ContactNode **sorted_end, ContactNode *min, int (*comparator)(ContactInfo *left, ContactInfo *right))
 {
-    ContactNode *current = *sorted_begin;
+    ContactNode *sorted_begin = list->first;
+    ContactNode *current = sorted_begin;
     ContactNode *tmp;
     while(current != *sorted_end && comparator(min->contact_data, current->contact_data) > 0) {
         current = current->next;
     }
     // Insert node at the beginning
-    if(current == *sorted_begin) {
-        *sorted_begin = min;
-        (*sorted_begin)->next = current;
-        (*sorted_begin)->prev = NULL;
-        current->prev = *sorted_begin;
+    if(current == sorted_begin) {
+        min->next = list->first;
+        min->prev = NULL;
+        list->first = min;
+        list->first->next->prev = min;
         return;
     }
     // Insert node at the end
-    if(current == *sorted_end) {
-        if(comparator(min->contact_data, current->contact_data) >= 0) {
-            // Insert after current sorted_end
-            tmp = (*sorted_end)->next;
-            (*sorted_end)->next = min;
-            min->prev = *sorted_end;
-            *sorted_end = min;
-            min->next = tmp;
-        }
-        else {
-            (*sorted_end)->prev->next = min;
-            min->next = *sorted_end;
+    if(current == *sorted_end && comparator(min->contact_data, current->contact_data) >= 0) {
+        // Insert after current sorted_end
+        tmp = (*sorted_end)->next;
+        (*sorted_end)->next = min;
+        min->prev = *sorted_end;
+        *sorted_end = min;
+        min->next = tmp;
+        if(min->next != NULL) {
+            min->next->prev = min;
         }
         return;
     }
     // Insert in the middle
     current->prev->next = min;
     min->next = current;
+    min->prev = current->prev;
+    current->prev = min;
 }
 
 void destroy_list_and_data(ContactList *list)
 {
-    ContactNode *current = list->last;
-    while(current->prev != NULL) {
-        current = current->prev;
-        free(current->next->contact_data);
-        free(current->next);
+    ContactNode *current = list->first;
+    while(current->next != NULL) {
+        free(current->prev->contact_data);
+        free(current->prev);
+        current = current->next;
     }
-    free(list->first->contact_data);
-    free(list->first);
+    free(list->last->contact_data);
+    free(list->last);
     free(list);
 }
 
@@ -209,6 +209,7 @@ ContactInfo *list_find(ContactList *list, Key key, char *search_key)
     return current == NULL ? NULL : current->contact_data;
 }
 
+
 void list_sort(ContactList *list, Key key) 
 {
     int (*comparator)(ContactInfo *, ContactInfo *) = get_comparator(key);
@@ -217,7 +218,7 @@ void list_sort(ContactList *list, Key key)
     ContactNode *sorted_end = list->first;
     while(sorted_end->next != NULL) {
         ContactNode *min = node_find_min(sorted_end->next, comparator);
-        insert(&sorted_begin, &sorted_end, min, comparator);
+        insert(list, &sorted_end, min, comparator);
     }
     list->first = sorted_begin;
     list->last = sorted_end;
@@ -225,135 +226,47 @@ void list_sort(ContactList *list, Key key)
 
 
 /*
- * Red-black tree functions implementations
- *
- * Based on r-b tree as described by Sedgewick and Wayne
- * in Algorithms 4th edition. More precisely it is a
- * left leaning r-b tree
- *
- * http://algs4.cs.princeton.edu/home/
+ * Binary tree functions implementations
  */
 
 /*
  *  HELPER FUNCTIONS
  */
 
-// Generic helpers and local operations
-
-bool is_red(RBNode *node)
+void create_node_right(BSTNode *node, ContactInfo *data)
 {
-    if(node == NULL) {
-        // Leaves are black
-        return black; 
-    }
-    return node->color == red;
-}
-
-/*
- * Exchanges current child with new child in parent
- */
-void parent_set_child(RBNode *current_child, RBNode *new_child)
-{
-    RBNode *parent = current_child->parent;
-    if(parent == NULL) {
-        // Current child is root
-        return;
-    }
-    if(parent->left == current_child) {
-        parent->left = new_child;
-    }
-    else {
-        parent->right = new_child;
-    }
-}
-
-/*
- * Rotates a temporary node with a right red child
- * to a node with a left red child
- */
-void rotate_left(RBNode *node)
-{
-    assert(is_red(node->right));
-
-    RBNode *new_child = node->right;
-    new_child->color = black;
-
-    parent_set_child(node, new_child);
-    
-    node->right = new_child->left;
-    new_child->left = node;
-    node->parent = new_child;
-    node->color = red;
-}
-
-/*
- * Rotates a temporary node with a left red child
- * to a node with a right red child
- *
- * Needed as a step before recoloring parent
- * and its children to black
- */
-void rotate_right(RBNode *node)
-{
-    assert(is_red(node->left));
-
-    RBNode *new_child = node->left;
-    new_child->color = black;
-
-    parent_set_child(node, new_child);
-
-    node->left = new_child->right;
-    new_child->right = node;
-    node->parent = new_child;
-    node->parent->right = node;
-    node->color = red;
-}
-
-void flip_colors(RBNode *node)
-{
-    assert(node->color != node->left->color && node->left->color == node->right->color);
-    node->color = node->color == red? black : red;
-    node->left->color = node->left->color == red ? black : red;
-    node->right->color = node->right->color == red ? black : red;
-}
-
-void create_node_right(RBNode *node, ContactInfo *data)
-{
-    node->right = malloc(sizeof(RBNode));
+    node->right = malloc(sizeof(BSTNode));
     node->right->contact_data = data;
     node->right->parent = node;
     node->right->left = NULL;
     node->right->right = NULL;
-    node->right->color = red;
     node->right->deleted = false;
 }
 
-void create_node_left(RBNode *node, ContactInfo *data)
+void create_node_left(BSTNode *node, ContactInfo *data)
 {
-    node->left = malloc(sizeof(RBNode));
+    node->left = malloc(sizeof(BSTNode));
     node->left->contact_data = data;
     node->left->parent = node;
     node->left->left = NULL;
     node->left->right = NULL;
-    node->left->color = red;
     node->left->deleted = false;
 }
 
 void create_root(ContactTree *tree, ContactInfo *data)
 {
-    tree->root = malloc(sizeof(RBNode));
+    tree->root = malloc(sizeof(BSTNode));
     tree->root->contact_data = data;
     tree->root->parent = NULL;
     tree->root->left = NULL;
     tree->root->right = NULL;
-    tree->root->color = black;
     tree->root->deleted = false;
 }
 
 
 // Tree destruction functions
 
-void destroy_node_and_data(RBNode *node)
+void destroy_node_and_data(BSTNode *node)
 {
     if(node == NULL) {
         return;
@@ -366,12 +279,12 @@ void destroy_node_and_data(RBNode *node)
 
 void destroy_tree_and_data(ContactTree *contact_tree)
 {
-    RBNode *root = contact_tree->root;
+    BSTNode *root = contact_tree->root;
     destroy_node_and_data(root);
     free(contact_tree);
 }
 
-void destroy_node(RBNode *node)
+void destroy_node(BSTNode *node)
 {
     if(node == NULL) {
         return;
@@ -383,7 +296,7 @@ void destroy_node(RBNode *node)
 
 void destroy_tree(ContactTree *contact_tree)
 {
-    RBNode *root = contact_tree->root;
+    BSTNode *root = contact_tree->root;
     destroy_node(root);
     free(contact_tree);
 }
@@ -423,7 +336,7 @@ ContactTree *tree_init(Key key)
 
 
 // Rebuilding helpers
-void build_new_node(ContactTree *new_tree, RBNode *node)
+void build_new_node(ContactTree *new_tree, BSTNode *node)
 {
     if(node == NULL) {
         return;
@@ -448,7 +361,7 @@ void tree_add(ContactTree *tree, ContactInfo *data)
         create_root(tree, data);
         return;
     }
-    RBNode *current = tree->root;
+    BSTNode *current = tree->root;
     while(true) {
         if(tree->comparator(data, current->contact_data) > 0) {
             // Data is bigger than current node's data, insert if right is NULL or go right
@@ -462,6 +375,7 @@ void tree_add(ContactTree *tree, ContactInfo *data)
             // Data is smaller than current node's data, insert if left is NULL or go right
             if(current->left == NULL) {
                 create_node_left(current, data);
+                break;
             }
             current = current->left;
         }
@@ -469,32 +383,17 @@ void tree_add(ContactTree *tree, ContactInfo *data)
             // Given data already in the tree
             current->contact_data = data;
             current->deleted = false;
-            return;
+            break;
         }
     }
-    // Fix the tree upwards
-    while(current != tree->root) {
-        if(!is_red(current->left) && is_red(current->right)) {
-            rotate_left(current);
-        }
-        if(is_red(current->left) && is_red(current->left->left)) {
-            rotate_right(current);
-        }
-        if(is_red(current->left) && is_red(current->right)) {
-            flip_colors(current);
-        }
-        current = current->parent;
-    }
-    tree->root->color = black;    // Root is always black
 }
 
-//TODO: Change to void with equality on address instead of comparator
 void tree_remove(ContactTree *tree, ContactInfo *data)
 {
     if(tree->root == NULL) {
         return;
     }
-    RBNode *current = tree->root;
+    BSTNode *current = tree->root;
     while(current != NULL) {
         if(tree->comparator(data, current->contact_data) > 0) {
             current = current->right;
@@ -517,7 +416,7 @@ ContactInfo *tree_find(ContactTree *tree, Key key, char *search_key)
         return NULL;
     }
     ContactInfo *to_return = NULL;
-    RBNode *current = tree->root;
+    BSTNode *current = tree->root;
 
     // Create temporary ContactInfo structure to re-use comparator functions
     ContactInfo *to_compare = create_dummy_info(key, search_key);

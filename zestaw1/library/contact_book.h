@@ -36,17 +36,13 @@ void destroy_list(ContactList *list);
 /*
  * Tree data structure and functions
  */
-
-typedef enum {red, black} Color;
-
-typedef struct RBNode {
-    struct RBNode *parent;
-    struct RBNode *left;
-    struct RBNode *right;
-    Color color;
+typedef struct BSTNode {
+    struct BSTNode *parent;
+    struct BSTNode *left;
+    struct BSTNode *right;
     bool deleted;
     ContactInfo *contact_data;
-} RBNode;
+} BSTNode;
 
 /*
  * Tree contains a key and a comparator
@@ -56,7 +52,7 @@ typedef struct RBNode {
  * the given key at a time in the structue
  */
 typedef struct ContactTree {
-    RBNode *root;
+    BSTNode *root;
     Key key;
     int (*comparator)(ContactInfo *left, ContactInfo *right);
 } ContactTree;
