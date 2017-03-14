@@ -13,3 +13,4 @@
 *.gch
 *.out
 *.csv
+*core
