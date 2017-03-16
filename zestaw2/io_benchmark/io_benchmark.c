@@ -3,64 +3,57 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <limits.h>
 #include "file_manip.h"
 
-bool parse_args(int argc, char **argv, int *num_records, int *record_size, char **filename, Mode *mode, FunctionType *type);
+bool parse_args(int argc, char **argv, int *num_records, int *record_size, char **filename, Command *command, FunctionType *type);
 bool parse_record_options(char **argv, int *num_records, int *record_size, char **filename);
-bool parse_mode_and_type(char **argv, Mode *mode, FunctionType *type);
-void print_usage();
+bool parse_command_and_type(char **argv, Command *command, FunctionType *type);
+void print_usage(char *prog_name);
 
 int main(int argc, char **argv)
 {
     int num_records, record_size;
     char *filename;
-    Mode mode;
+    Command mode;
     FunctionType type;
+    if(parse_args(argc, argv, &num_records, &record_size, &filename, &mode, &type) == false) {
+        print_usage(argv[0]);
+        //TODO: peror or something
+        return -1;
+    }
     return 0;
 }
 
-bool parse_args(int argc, char **argv, int *num_records, int *record_size, char **filename, Mode *mode, FunctionType *type)
+bool parse_args(int argc, char **argv, int *num_records, int *record_size, char **filename, Command *command, FunctionType *type)
 {
     if(argc < 5) {
-        print_usage();
-        // TODO: Add perror
         return false;
     }
     if(!strcmp(argv[1], "generate")) {
         return parse_record_options(argv + 2, num_records, record_size, filename);
     }
     else {
-        return parse_mode_and_type(argv, mode, type) && parse_record_options(argv + 3, num_records, record_size, filename);
+        return parse_command_and_type(argv + 1, command, type) && parse_record_options(argv + 3, num_records, record_size, filename);
     }
 }
 
 bool parse_record_options(char **argv, int *num_records, int *record_size, char **filename)
 {
-    if(argv[0] == NULL) {
-        // TODO: Think if this is neccessary
-        print_usage();
-        return false;
-    }
     *filename = argv[0];
-
-    if(argv[1] == NULL) {
-        print_usage();
-        return false;
-    }
+    
     long tmp = strtol(argv[1], NULL, 10);
     if(errno == ERANGE || tmp <= 0 || tmp >= INT_MAX) {
-        print_usage();
         return false;
     }
     *num_records = (int)tmp;
 
+    // Argv[2] can be NULL when 5 arguments are given and the command isnt shuffle or sort
     if(argv[2] == NULL) {
-        print_usage();
         return false;
     }
     tmp = strtol(argv[2], NULL, 10);
     if(errno == ERANGE || tmp <= 0 || tmp >= INT_MAX) {
-        print_usage();
         return false;
     }
     *record_size = (int)tmp;
@@ -68,38 +61,51 @@ bool parse_record_options(char **argv, int *num_records, int *record_size, char 
     return true;
 }
 
-bool parse_mode_and_type(char **argv, Mode *mode, FunctionType *type)
+bool parse_command_and_type(char **argv, Command *command, FunctionType *type)
 {
    if(!strcmp(argv[0], "sys")) {
-       *mode = sys;
+       *type = sys;
    }
    else if(!strcmp(argv[0], "lib")) {
-       *mode = lib;
+       *type= lib;
    }
    else {
-       print_usage();
        return false;
    }
    if(!strcmp(argv[1], "shuffle")) {
-       *type = shuffle;
+       *command = shuffle;
    }
    else if(!strcmp(argv[1], "sort")) {
-       *type = sort;
+       *command = sort;
    }
    else {
-       print_usage();
        return false;
    }
    return true;
 }
 
-void print_usage()
+void print_usage(char *prog_name)
 {
-    printf("Usage: ./%s [generate] [filename] [num_records] [record_size]\n", __FILE__);
-    printf("   or: ./%s [sys/lib] [shuffle/sort] [num_records] [record_size]\n", __FILE__);
+    printf("\n%s\n\n", "IO_BENCHMARK");
+    printf("Usage: %s [generate] [filename] [num_records] [record_size]\n", prog_name);
+    printf("   or: %s [sys/lib] [shuffle/sort] [filename] [num_records] [record_size]\n", prog_name);
+    printf("\n");
     printf("%s\n",
-           "Options:");
+           "Options: (order matters, as above)");
     printf("%s\n%s\n",
-           "     generate: creates a file filled with random bytes, containing",
-           "               $num_records records, each of size $record_size    ");
+           "  generate:     creates a file filled with random bytes, containing",
+           "                $num_records records, each of size $record_size    ");
+    printf("%s\n",
+           "  shuffle:      shuffle records in the file $filename randomly     ");
+    printf("%s\n%s\n",
+           "  sort:         sort the records in the file by comparing the first",
+           "                byte of each record                                ");
+    printf("%s\n",
+           "  sys/lib:      use kernel or library functions respectively       ");
+    printf("%s\n",
+           "  filename:     work on the file with given filename               ");
+    printf("%s\n",
+           "  num_records:  specify the number of records in the file          ");
+    printf("%s\n",
+           "  record_size:  specify the size of a single record in bytes       ");
 }
