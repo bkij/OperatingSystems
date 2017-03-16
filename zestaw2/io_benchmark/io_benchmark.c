@@ -54,6 +54,10 @@ bool parse_record_options(char **argv, int *num_records, int *record_size, char 
     }
     *num_records = (int)tmp;
 
+    if(argv[2] == NULL) {
+        print_usage();
+        return false;
+    }
     tmp = strtol(argv[2], NULL, 10);
     if(errno == ERANGE || tmp <= 0 || tmp >= INT_MAX) {
         print_usage();
@@ -64,6 +68,38 @@ bool parse_record_options(char **argv, int *num_records, int *record_size, char 
     return true;
 }
 
+bool parse_mode_and_type(char **argv, Mode *mode, FunctionType *type)
+{
+   if(!strcmp(argv[0], "sys")) {
+       *mode = sys;
+   }
+   else if(!strcmp(argv[0], "lib")) {
+       *mode = lib;
+   }
+   else {
+       print_usage();
+       return false;
+   }
+   if(!strcmp(argv[1], "shuffle")) {
+       *type = shuffle;
+   }
+   else if(!strcmp(argv[1], "sort")) {
+       *type = sort;
+   }
+   else {
+       print_usage();
+       return false;
+   }
+   return true;
+}
+
 void print_usage()
 {
+    printf("Usage: ./%s [generate] [filename] [num_records] [record_size]\n", __FILE__);
+    printf("   or: ./%s [sys/lib] [shuffle/sort] [num_records] [record_size]\n", __FILE__);
+    printf("%s\n",
+           "Options:");
+    printf("%s\n%s\n",
+           "     generate: creates a file filled with random bytes, containing",
+           "               $num_records records, each of size $record_size    ");
 }
