@@ -17,9 +17,8 @@ int main(int argc, char **argv)
     char *filename;
     Command mode;
     FunctionType type;
-    if(parse_args(argc, argv, &num_records, &record_size, &filename, &mode, &type) == false) {
+    if(!parse_args(argc, argv, &num_records, &record_size, &filename, &mode, &type)) {
         print_usage(argv[0]);
-        //TODO: peror or something
         return -1;
     }
     return 0;
@@ -31,6 +30,7 @@ bool parse_args(int argc, char **argv, int *num_records, int *record_size, char 
         return false;
     }
     if(!strcmp(argv[1], "generate")) {
+        *command = do_generate;
         return parse_record_options(argv + 2, num_records, record_size, filename);
     }
     else {
@@ -73,10 +73,10 @@ bool parse_command_and_type(char **argv, Command *command, FunctionType *type)
        return false;
    }
    if(!strcmp(argv[1], "shuffle")) {
-       *command = shuffle;
+       *command = do_shuffle;
    }
    else if(!strcmp(argv[1], "sort")) {
-       *command = sort;
+       *command = do_sort;
    }
    else {
        return false;

@@ -5,7 +5,7 @@ CFLAGS=-Wall -std=c99
 
 all: io_benchmark
 
-io_benchmark: io_benchmark.c
+io_benchmark: io_benchmark.c file_manip.c
 	$(CC) $(CFLAGS) $^ -o $@.out
 
 clean:
