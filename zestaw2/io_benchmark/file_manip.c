@@ -8,6 +8,7 @@
 #include <malloc.h>
 #include <time.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "file_manip.h"
 
 /*
@@ -37,6 +38,32 @@ void print_err_close(char *filename)
 void print_err_open(char *filename)
 {
     fprintf(stderr, "%s %s\n", "Error openging the file", filename);
+}
+
+bool enough_entropy_available(int entropy_needed)
+{
+    char *buf = malloc(256);
+    FILE *file = fopen("/proc/sys/kernel/random/entropy_avail", "r");
+    if(file == NULL) {
+        fprintf(stderr, "%s\n", "Couldn't open entropy_avail");
+        free(buf);
+        return false;
+    }
+    if(fgets(buf, 256, file) < 0) {
+        fprintf(stderr, "%s\n", "Couldn't read from entropy_avail");
+        free(buf);
+        return false;
+    }
+    long tmp = strtol(buf, NULL, 10);
+    if(errno == ERANGE || tmp < 0 || tmp >= INT_MAX) {
+        return false;
+    }
+    if(entropy_needed > (int)tmp) {
+        fprintf(stderr, "%s\n", "Not enough entropy in /dev/random");
+        free(buf);
+        return false;
+    }
+    return true;
 }
 
 int execute(char *filename, int num_records, int record_size, Command command, FunctionType type)
@@ -113,20 +140,20 @@ int generate_sys(char *filename, int num_records, int record_size)
     bool cleanup_random = false;
     bool cleanup_file = false;
     char *buf = malloc(num_records * record_size);
-        
+ 
     file_fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     if(file_fd < 0) {
         goto err_clean;
     }
     cleanup_file = true;
 
-    random_fd = open("/dev/random", O_RDONLY);
+    random_fd = open("/dev/urandom", O_RDONLY);
     if(random_fd < 0) {
         goto err_clean;
     }
     cleanup_random = true;
     
-    ssize_t read_bytes = read(random_fd, buf, sizeof(buf));
+    ssize_t read_bytes = read(random_fd, buf, num_records * record_size);
     if(read_bytes < sizeof(buf)) {
         if(read_bytes > 0) {
             errno = EAGAIN;
@@ -134,7 +161,7 @@ int generate_sys(char *filename, int num_records, int record_size)
         goto err_clean;
     }
 
-    ssize_t written_bytes = write(file_fd, buf, sizeof(buf));
+    ssize_t written_bytes = write(file_fd, buf, num_records * record_size);
     if(written_bytes < sizeof(buf)) {
         if(written_bytes > 0) {
             errno = EIO;
@@ -178,7 +205,7 @@ int generate_lib(char *filename, int num_records, int record_size)
     }
     cleanup_file = true;
 
-    random_file = fopen("/dev/random", "r");
+    random_file = fopen("/dev/urandom", "r");
     if(random_file == NULL) {
         goto err_clean;
     }
@@ -219,6 +246,9 @@ err_clean:
 
 int generate(char *filename, int num_records, int record_size, FunctionType type)
 {
+    //if(!enough_entropy_available(num_records * record_size)) {
+    //    return -1;
+    //}
     if(type == sys) {
         return generate_sys(filename, num_records, record_size);
     }

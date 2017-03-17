@@ -15,13 +15,13 @@ int main(int argc, char **argv)
 {
     int num_records, record_size;
     char *filename;
-    Command mode;
+    Command command;
     FunctionType type;
-    if(!parse_args(argc, argv, &num_records, &record_size, &filename, &mode, &type)) {
+    if(!parse_args(argc, argv, &num_records, &record_size, &filename, &command, &type)) {
         print_usage(argv[0]);
         return -1;
     }
-    return 0;
+    return execute(filename, num_records, record_size, command, type);
 }
 
 bool parse_args(int argc, char **argv, int *num_records, int *record_size, char **filename, Command *command, FunctionType *type)
@@ -69,7 +69,7 @@ bool parse_command_and_type(char **argv, Command *command, FunctionType *type)
        *command = do_sort;
    }
    else if(!strcmp(argv[1], "generate")) {
-       *command = do_shuffle;
+       *command = do_generate;
    }
    else {
        return false;
