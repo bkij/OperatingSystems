@@ -49,6 +49,76 @@ int execute(char *filename, int num_records, int record_size, Command command, F
     }
 }
 
+int swap_records_sys(int fd, char *buf_left, char *buf_right, int i, int j)
+{
+        // READ
+        if(lseek(file_fd, i * record_size, SEEK_SET) != i * record_size) {
+            return -1;
+        }
+        if(read(file_fd, buf_left, record_size) != record_size) {
+            return -1;
+        }
+        if(lseek(file_fd, j * record_size, SEEK_SET) != j * record_size) {
+            return -1;
+        }
+        if(read(file_fd, buf_right, record_size) != record_size) {
+            return -1;
+        }
+        // WRITE
+        if(lseek(file_fd, j * record_size, SEEK_SET) != j * record_size) {
+            return -1;
+        }
+        if(write(file_fd, buf_left, record_size) != record_size) {
+            return -1;
+        }
+        if(lseek(file_fd, i * record_size, SEEK_SET) != i * record_size) {
+            return -1;
+        }
+        if(wrte(file_fd, buf_right, record_size) != record_size) {
+            return -1;
+        }
+        return 0;
+}
+
+int swap_records_lib(FILE *file, char *buf_left, char *buf_right, int i, int j)
+{
+        //READ
+        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+            print_err_seek(filename);
+            return -1;
+        }
+        if(fread(buf_left, 1, record_size, file) != record_size) {
+            print_err_read(filename);
+            return -1;
+        }
+        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+            print_err_seek(filename);
+            return -1;
+        }
+        if(fread(buf_right, 1, record_size, file) != record_size) {
+            print_err_read(filename);
+            return -1;
+        }
+        //WRITE
+        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+            print_err_seek(filename);
+            return -1;
+        }
+        if(fwrite(buf_left, 1, record_size, file) != record_size) {
+            print_err_write(filename);
+            return -1;
+        }
+        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+            print_err_seek(filename);
+            return -1;
+        }
+        if(fwrite(buf_right, 1, record_size, file) != record_size) {
+            print_err_write(filename);
+            return -1;
+        }
+        return 0;
+}
+
 int generate_sys(char *filename, int num_records, int record_size)
 {
     int file_fd, random_fd;
@@ -186,30 +256,7 @@ int shuffle_sys(char *filename, int num_records, int record_size)
 
     for(int i = 0; i < num_records - 1; i++) {
         int j = rand() % num_records;
-        // READ
-        if(lseek(file_fd, i * record_size, SEEK_SET) != i * record_size) {
-            goto err_clean;
-        }
-        if(read(file_fd, buf_left, record_size) != record_size) {
-            goto err_clean;
-        }
-        if(lseek(file_fd, j * record_size, SEEK_SET) != j * record_size) {
-            goto err_clean;
-        }
-        if(read(file_fd, buf_right, record_size) != record_size) {
-            goto err_clean;
-        }
-        // WRITE
-        if(lseek(file_fd, j * record_size, SEEK_SET) != j * record_size) {
-            goto err_clean;
-        }
-        if(write(file_fd, buf_left, record_size) != record_size) {
-            goto err_clean;
-        }
-        if(lseek(file_fd, i * record_size, SEEK_SET) != i * record_size) {
-            goto err_clean;
-        }
-        if(wrte(file_fd, buf_right, record_size) != record_size) {
+        if(swap_records_sys(file_fd, buf_left, buf_right, i, j) < 0) {
             goto err_clean;
         }
     }
@@ -248,38 +295,7 @@ int shuffle_lib(char *filename, int num_records, int record_size)
     srand(time(NULL));
     for(int i = 0; i < num_records - 1; i++) {
         int j = rand() % num_records;
-        //READ
-        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
-            print_err_seek(filename);
-            goto err_clean;
-        }
-        if(fread(buf_left, 1, record_size, file) != record_size) {
-            print_err_read(filename);
-            goto err_clean;
-        }
-        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
-            print_err_seek(filename);
-            goto err_clean;
-        }
-        if(fread(buf_right, 1, record_size, file) != record_size) {
-            print_err_read(filename);
-            goto err_clean;
-        }
-        //WRITE
-        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
-            print_err_seek(filename);
-            goto err_clean;
-        }
-        if(fwrite(buf_left, 1, record_size, file) != record_size) {
-            print_err_write(filename);
-            goto err_clean;
-        }
-        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
-            print_err_seek(filename);
-            goto err_clean;
-        }
-        if(fwrite(buf_right, 1, record_size, file) != record_size) {
-            print_err_write(filename);
+        if(swap_records_lib(file, buf_left, buf_right, i, j) < 0) {
             goto err_clean;
         }
     }
@@ -299,3 +315,4 @@ err_clean:
     free(buf_right);
     return -1;
 }
+
