@@ -26,16 +26,10 @@ int main(int argc, char **argv)
 
 bool parse_args(int argc, char **argv, int *num_records, int *record_size, char **filename, Command *command, FunctionType *type)
 {
-    if(argc < 5) {
+    if(argc < 6) {
         return false;
     }
-    if(!strcmp(argv[1], "generate")) {
-        *command = do_generate;
-        return parse_record_options(argv + 2, num_records, record_size, filename);
-    }
-    else {
-        return parse_command_and_type(argv + 1, command, type) && parse_record_options(argv + 3, num_records, record_size, filename);
-    }
+    return parse_command_and_type(argv + 1, command, type) && parse_record_options(argv + 3, num_records, record_size, filename);
 }
 
 bool parse_record_options(char **argv, int *num_records, int *record_size, char **filename)
@@ -48,10 +42,6 @@ bool parse_record_options(char **argv, int *num_records, int *record_size, char 
     }
     *num_records = (int)tmp;
 
-    // Argv[2] can be NULL when 5 arguments are given and the command isnt shuffle or sort
-    if(argv[2] == NULL) {
-        return false;
-    }
     tmp = strtol(argv[2], NULL, 10);
     if(errno == ERANGE || tmp <= 0 || tmp >= INT_MAX) {
         return false;
@@ -78,6 +68,9 @@ bool parse_command_and_type(char **argv, Command *command, FunctionType *type)
    else if(!strcmp(argv[1], "sort")) {
        *command = do_sort;
    }
+   else if(!strcmp(argv[1], "generate")) {
+       *command = do_shuffle;
+   }
    else {
        return false;
    }
@@ -87,8 +80,7 @@ bool parse_command_and_type(char **argv, Command *command, FunctionType *type)
 void print_usage(char *prog_name)
 {
     printf("\n%s\n\n", "IO_BENCHMARK");
-    printf("Usage: %s [generate] [filename] [num_records] [record_size]\n", prog_name);
-    printf("   or: %s [sys/lib] [shuffle/sort] [filename] [num_records] [record_size]\n", prog_name);
+    printf("Usage: %s [sort/sys] [shuffle/sort/generate] [filename] [num_records] [record_size]\n", prog_name);
     printf("\n");
     printf("%s\n",
            "Options: (order matters, as above)");

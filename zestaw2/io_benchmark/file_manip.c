@@ -6,7 +6,33 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <malloc.h>
+#include <time.h>
 #include "file_manip.h"
+
+void print_err_seek(char *filename)
+{
+    fprintf(stderr, "%s %s\n", "Error seeking in the file", filename);
+}
+
+void print_err_read(char *filename)
+{
+    fprintf(stderr, "%s %s\n", "Error reading from the file", filename);
+}
+
+void print_err_write(char *filename)
+{
+    fprintf(stderr, "%s %s\n", "Error writing to the file", filename);
+}
+
+void print_err_close(char *filename)
+{
+    fprintf(stderr, "%s %s\n", "Error closing the file", filename);
+}
+
+void print_err_open(char *filename)
+{
+    fptinf(stderr, "%s %s\n", "Error openging the file", filename);
+}
 
 int execute(char *filename, int num_records, int record_size, Command command, FunctionType type)
 {
@@ -30,7 +56,7 @@ int generate_sys(char *filename, int num_records, int record_size)
     bool cleanup_file = false;
     char *buf = malloc(num_records * record_size);
         
-    file_fd = open(filename, O_CREAT, S_IRUSR | S_IWUSR);
+    file_fd = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     if(file_fd < 0) {
         goto err_clean;
     }
@@ -89,6 +115,7 @@ int generate_lib(char *filename, int num_records, int record_size)
 
     file = fopen(filename, "w+");
     if(file == NULL) {
+        print_err_open(filename);
         goto err_clean;    
     }
     cleanup_file = true;
@@ -99,20 +126,20 @@ int generate_lib(char *filename, int num_records, int record_size)
     }
     cleanup_random = true;
 
-    size_t read_bytes = fread(buf, sizeof(char), sizeof(buf), random_file);
-    if(read_bytes < sizeof(buf)) {
-        fprintf(stderr, "%s\n", "Error while reading /dev/random");
+    size_t read_bytes = fread(buf, sizeof(char), num_records * record_size, random_file);
+    if(read_bytes < num_records * record_size) {
+        print_err_read(filename);
         goto err_clean;
     }
 
-    size_t written_bytes = fwrite(buf, sizeof(char), sizeof(buf), file);
-    if(written_bytes < sizeof(buf)) {
-        fprintf(stderr, "%s\n", "Error while writing to file");
+    size_t written_bytes = fwrite(buf, sizeof(char), num_records * record_size, file);
+    if(written_bytes < num_records * record_size) {
+        print_err_write(filename);
         goto err_clean;
     }
 
     if(fclose(file) < 0 || fclose(random_file) < 0) {
-        fprintf(stderr, "%s\n", "Error closing a file");
+        print_err_close(filename);
     }
     free(buf);
     return 0;
@@ -140,4 +167,135 @@ int generate(char *filename, int num_records, int record_size, FunctionType type
     else {
         return generate_lib(filename, num_records, record_size);
     }
+}
+
+int shuffle_sys(char *filename, int num_records, int record_size)
+{
+    int file_fd;
+    bool cleanup_file = false;
+    char *buf_left = malloc(record_size);
+    char *buf_right = malloc(record_size);
+
+    file_fd = open(filename, O_RDWR);
+    if(file_fd < 0) {
+        goto err_clean;
+    }
+    cleanup_file = true;
+
+    srand(time(NULL));
+
+    for(int i = 0; i < num_records - 1; i++) {
+        int j = rand() % num_records;
+        // READ
+        if(lseek(file_fd, i * record_size, SEEK_SET) != i * record_size) {
+            goto err_clean;
+        }
+        if(read(file_fd, buf_left, record_size) != record_size) {
+            goto err_clean;
+        }
+        if(lseek(file_fd, j * record_size, SEEK_SET) != j * record_size) {
+            goto err_clean;
+        }
+        if(read(file_fd, buf_right, record_size) != record_size) {
+            goto err_clean;
+        }
+        // WRITE
+        if(lseek(file_fd, j * record_size, SEEK_SET) != j * record_size) {
+            goto err_clean;
+        }
+        if(write(file_fd, buf_left, record_size) != record_size) {
+            goto err_clean;
+        }
+        if(lseek(file_fd, i * record_size, SEEK_SET) != i * record_size) {
+            goto err_clean;
+        }
+        if(wrte(file_fd, buf_right, record_size) != record_size) {
+            goto err_clean;
+        }
+    }
+
+    free(buf_left);
+    free(buf_right);
+    if(close(file_fd) < 0) {
+        perror("Error closing file");
+    }
+    return 0;
+
+err_clean:
+    perror("Error in function shuffle");
+    free(buf_left);
+    free(buf_right);
+    if(cleanup_file && close(file_fd) < 0) {
+        perror("Error closing file");
+    }
+    return -1;
+}
+
+int shuffle_lib(char *filename, int num_records, int record_size)
+{
+    FILE *file;
+    bool cleanup_file = false;
+    char *buf_left = malloc(sizeof(record_size));
+    char *buf_right = malloc(sizeof(record_size));
+
+    file = fopen(filename, "r+");
+    if(file == NULL) {
+        print_err_open(filename);
+        goto err_clean;
+    }
+    cleanup_file = true;
+
+    srand(time(NULL));
+    for(int i = 0; i < num_records - 1; i++) {
+        int j = rand() % num_records;
+        //READ
+        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+            print_err_seek(filename);
+            goto err_clean;
+        }
+        if(fread(buf_left, 1, record_size, file) != record_size) {
+            print_err_read(filename);
+            goto err_clean;
+        }
+        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+            print_err_seek(filename);
+            goto err_clean;
+        }
+        if(fread(buf_right, 1, record_size, file) != record_size) {
+            print_err_read(filename);
+            goto err_clean;
+        }
+        //WRITE
+        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+            print_err_seek(filename);
+            goto err_clean;
+        }
+        if(fwrite(buf_left, 1, record_size, file) != record_size) {
+            print_err_write(filename);
+            goto err_clean;
+        }
+        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+            print_err_seek(filename);
+            goto err_clean;
+        }
+        if(fwrite(buf_right, 1, record_size, file) != record_size) {
+            print_err_write(filename);
+            goto err_clean;
+        }
+    }
+
+    if(fclose(file) < 0) {
+        print_err_close(filename);
+    }
+    free(buf_left);
+    free(buf_right);
+    return 0;
+
+err_clean:
+    if(cleanup_file && fclose(file) < 0) {
+        print_err_close(filename);
+    }
+    free(buf_left);
+    free(buf_right);
+    return -1;
 }
