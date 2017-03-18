@@ -100,7 +100,7 @@ int swap_records_sys(int file_fd, char *buf_left, char *buf_right, int i, int j,
 
 int swap_records_lib(FILE *file, char *buf_left, char *buf_right, int i, int j, int record_size, char *filename)
 {
-        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+        if(fseek(file, j * record_size, SEEK_SET) < 0) {
             print_err_seek(filename);
             return -1;
         }
@@ -108,7 +108,7 @@ int swap_records_lib(FILE *file, char *buf_left, char *buf_right, int i, int j, 
             print_err_write(filename);
             return -1;
         }
-        if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+        if(fseek(file, i * record_size, SEEK_SET) < 0) {
             print_err_seek(filename);
             return -1;
         }
@@ -314,8 +314,8 @@ int shuffle_lib(char *filename, int num_records, int record_size)
 {
     FILE *file;
     bool cleanup_file = false;
-    char *buf_left = malloc(sizeof(record_size));
-    char *buf_right = malloc(sizeof(record_size));
+    char *buf_left = malloc(record_size);
+    char *buf_right = malloc(record_size);
 
     file = fopen(filename, "r+");
     if(file == NULL) {
@@ -326,23 +326,23 @@ int shuffle_lib(char *filename, int num_records, int record_size)
 
     srand(time(NULL));
     for(int i = 0; i < num_records - 1; i++) {
-        int j = rand() % num_records;
+        int j = rand() % num_records; 
         //READ
-       if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+        if(fseek(file, i * record_size, SEEK_SET) < 0) {
             print_err_seek(filename);
-            return -1;
+            goto err_clean;
         }
-        if(fread(buf_left, 1, record_size, file) != record_size) {
+        if(fread(buf_left, record_size, 1, file) != 1) {
             print_err_read(filename);
-            return -1;
+            goto err_clean;
         }
-        if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+        if(fseek(file, j * record_size, SEEK_SET) < 0) {
             print_err_seek(filename);
-            return -1;
+            goto err_clean;
         }
-        if(fread(buf_right, 1, record_size, file) != record_size) {
+        if(fread(buf_right, record_size, 1, file) != 1) {
             print_err_read(filename);
-            return -1;
+            goto err_clean;
         }
         //WRITE
         if(swap_records_lib(file, buf_left, buf_right, i, j, record_size, filename) < 0) {
@@ -350,7 +350,7 @@ int shuffle_lib(char *filename, int num_records, int record_size)
         }
     }
 
-    if(fclose(file) < 0) {
+    if(cleanup_file && fclose(file) < 0) {
         print_err_close(filename);
     }
     free(buf_left);
@@ -358,6 +358,7 @@ int shuffle_lib(char *filename, int num_records, int record_size)
     return 0;
 
 err_clean:
+    perror("Encountered error while shuffling");
     if(cleanup_file && fclose(file) < 0) {
         print_err_close(filename);
     }
@@ -444,7 +445,7 @@ int sort_lib(char *filename, int num_records, int record_size)
     for(int cnt = num_records; cnt > 1; cnt--) {
         for(int i = 0; i < cnt - 1; i++) {
             int j = i + 1;
-            if(fseek(file, i * record_size, SEEK_SET) != i * record_size) {
+            if(fseek(file, i * record_size, SEEK_SET) < 0) {
                 print_err_seek(filename);
                 return -1;
             }
@@ -452,7 +453,7 @@ int sort_lib(char *filename, int num_records, int record_size)
                 print_err_read(filename);
                 return -1;
             }
-            if(fseek(file, j * record_size, SEEK_SET) != j * record_size) {
+            if(fseek(file, j * record_size, SEEK_SET) < 0) {
                 print_err_seek(filename);
                 return -1;
             }
