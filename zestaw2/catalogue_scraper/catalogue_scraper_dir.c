@@ -159,6 +159,7 @@ void print_file_info(char *absolute_path, char *filename, struct stat *file_info
 
 void print_permissions(mode_t file_mode)
 {
+    printf("%s: ", "Permissions");
     if(file_mode & S_IRUSR) {
         print_r();
     }

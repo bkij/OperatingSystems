@@ -98,6 +98,7 @@ int print_file_info(const char *pathname, const struct stat *sb, int typeflag, s
 
 void print_permissions(mode_t file_mode)
 {
+    printf("%s: ", "Permissions");
     if(file_mode & S_IRUSR) {
         print_r();
     }
