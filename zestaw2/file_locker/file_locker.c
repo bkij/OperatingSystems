@@ -12,8 +12,6 @@
 bool parse_arguments(char **argv, char **filename, bool *blocking);
 void menu(int fd, bool blocking);
 void print_options();
-void read_byte(int fd, int pos);
-void write_byte(int fd, int pos);
 
 int main(int argc, char **argv)
 {
@@ -68,12 +66,22 @@ void menu(int fd, bool blocking)
         scanf("%d", &choice);
         switch(choice) {
             case 1:
+                printf("%s\n", "Please enter the byte position to lock:");
+                scanf("%d", &pos);
+                create_read_lock(fd, pos, blocking);
                 break;
             case 2:
+                printf("%s\n", "Please enter the byte position to lock:");
+                scanf("%d", &pos);
+                create_write_lock(fd, pos, blocking);
                 break;
             case 3:
+                list_locks(fd);
                 break;
             case 4:
+                printf("%s\n", "Please enter the byte position to unlock:");
+                scanf("%d", &pos);
+                lift_lock(fd, pos);
                 break;
             case 5:
                 printf("%s\n", "Please enter the byte position:");
@@ -104,32 +112,4 @@ void print_options()
     printf("%s\n", "5) Read a byte from file");
     printf("%s\n", "6) Write a byte to file");
     printf("%s\n", "7) Quit");
-}
-
-void read_byte(int fd, int pos)
-{
-    unsigned char byte;
-    if(lseek(fd, pos, SEEK_SET) != pos) {
-        perror("Seek error while reading from file");
-        return;
-    }
-    if(read(fd, &byte, 1) < 0) {
-        perror("Read error");
-        return;
-    }
-    printf("Byte: %x read at pos: %d\n", byte, pos);
-}
-
-void write_byte(int fd, int pos)
-{
-    unsigned char byte = rand();
-    if(lseek(fd, pos, SEEK_SET) != pos) {
-        perror("Seek error while writing to a file");
-        return;
-    }
-    if(write(fd, &byte, 1) < 0) {
-        perror("Write error");
-        return;
-    }
-    printf("Byte: %x written at pos: %d\n", byte, pos);
 }
