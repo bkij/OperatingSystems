@@ -30,8 +30,9 @@ void execute(char *line)
 {
     if(line[0] == '#') {
         // Change environment variable value
-        char *var_name = get_env_variable(line);
-        char *new_value = get_env_value(line);
+        // + 1 to get the string without hash
+        char *var_name = get_env_variable(line + 1);
+        char *new_value = get_env_value(line + 1);
         if(new_value == NULL) {
             delete_env_var(var_name);
             free(var_name);
@@ -63,8 +64,8 @@ void execute(char *line)
             int status;
             wait(&status);
             if(WIFEXITED(status)) {
-                if(WEXITSTATUS(status) < 0) {
-                    fprintf(stderr, "Error: %s returned %d. Aborting\n", command, WEXITSTATUS(status));
+                if(WEXITSTATUS(status) != 0) {
+                    fprintf(stderr, "\nError: %s returned %d. Aborting...\n", command, WEXITSTATUS(status));
                     exit(-1);
                 }
             }
@@ -78,11 +79,11 @@ void execute(char *line)
 
 void parse_command(char *line ,char **command, char **arguments)
 {
-    char *token;
-    *command = strtok(line, " ");
+    char *token = strtok(line, " ");
+    *command = token;
+    *arguments++ = token;
     while((token = strtok(NULL, " ")) != NULL) {
-        *arguments = token;
-        arguments++;
+        *arguments++ = token;
     }
     *arguments = NULL;
 }
@@ -107,9 +108,9 @@ char *get_env_variable(char *line)
     while(line[idx] != ' ' && line[idx] != '\0') {
         idx++;
     }
-    char *env_variable = malloc(idx);
-    strncpy(env_variable, line, idx - 1);
-    env_variable[idx - 1] = '\0';
+    char *env_variable = malloc(idx + 1);
+    strncpy(env_variable, line, idx);
+    env_variable[idx] = '\0';
     return env_variable;
 }
 
@@ -122,13 +123,13 @@ char *get_env_value(char *line)
     if(line[idx] == '\0') {
         return NULL;
     }
-    int env_value_size = strlen(line + idx);
+    int env_value_size = strlen(line + idx + 1);
     char *env_value = malloc(env_value_size); // Allocate memory for characters up to, not including, the newline character, and '\n'
     if(env_value == NULL) {
         perror("Malloc error");
         return NULL;
     }
-    strncpy(env_value, (line + idx), env_value_size - 1);
+    strncpy(env_value, (line + idx + 1), env_value_size - 1);
     env_value[env_value_size] = '\0';
     return env_value;
 }
