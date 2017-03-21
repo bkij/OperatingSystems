@@ -7,3 +7,4 @@
 *.map
 *.exp
 *cmake-build*
+.idea/*
