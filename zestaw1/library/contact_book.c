@@ -45,7 +45,9 @@ ContactInfo *create_dummy_info(Key key, char *search_key)
             strncpy(dummy_info->phone, search_key, sizeof(dummy_info->phone));
             dummy_info->phone[sizeof(dummy_info->phone) - 1] = '\0';
             break;
-        //TODO: default?
+        default:
+            // This should never happen
+            return NULL;
     }
     return dummy_info;
 }
@@ -114,8 +116,8 @@ void insert(ContactList *list, ContactNode **sorted_end, ContactNode *min, int (
 
 void destroy_list_and_data(ContactList *list)
 {
-    ContactNode *current = list->first;
-    while(current->next != NULL) {
+    ContactNode *current = list->first->next;
+    while(current != NULL) {
         free(current->prev->contact_data);
         free(current->prev);
         current = current->next;
