@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.02)
-project(interpreter)
+project(.)
 
 set(CMAKE_C_FLAGS -Wall -std=c99)
 

@@ -8,3 +8,6 @@
 *.exp
 *cmake-build*
 .idea/*
+GPATH
+GRTAGS
+GTAGS
