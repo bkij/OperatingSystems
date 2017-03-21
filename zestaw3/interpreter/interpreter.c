@@ -3,7 +3,7 @@
 #include "batch.h"
 
 void print_usage(char *program_name);
-void parse_arguments(char **argv, char **filename);
+int parse_arguments(char **argv, char **filename);
 
 int main(int argc, char **argv)
 {
@@ -22,8 +22,8 @@ int main(int argc, char **argv)
 
 void print_usage(char *program_name)
 {
-    printf("\nUsage: %s %s\n", program_name, "<batch_filename>");
-    printf("\nFilename must specify a batch file for the interpreter.\n");
+    printf("Usage: %s %s\n", program_name, "<batch_filename>");
+    printf("\nFilename must specify a batch file for the interpreter.\n\n");
 }
 
 int parse_arguments(char **argv, char **filename)
@@ -32,7 +32,7 @@ int parse_arguments(char **argv, char **filename)
         perror("Error");
         return -1;
     }
-    if(access(argv[1], R_OK | W_OK | X_OK) < 0) {
+    if(access(argv[1], R_OK) < 0) {
         perror("Error");
         return -1;
     }

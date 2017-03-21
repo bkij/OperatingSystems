@@ -12,3 +12,7 @@ GPATH
 GRTAGS
 GTAGS
 libc
+*CMakeCache.txt
+*CMakeFiles*
+*Makefile
+*.cmake
