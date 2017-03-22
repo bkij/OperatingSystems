@@ -12,7 +12,6 @@
 
 int parse_args(char **argv, char **root_dir);
 int scrape(char *root_dir);
-int scrape_internal(char *absolute_root_path, char *current_dir);
 void print_file_info(char *absolute_path, char *filename, struct stat *file_info);
 void print_permissions(mode_t file_mode);
 void print_modification_date(time_t modified_time);
