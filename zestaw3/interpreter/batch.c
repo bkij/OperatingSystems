@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "batch.h"
-
 
 void process_batch_file(char *filename)
 {
@@ -17,6 +16,7 @@ void process_batch_file(char *filename)
         exit(-1);
     }
     while(fgets(current_line, sizeof(current_line), file) != NULL) {
+        strip_potential_newline(current_line);
         execute(current_line);
     }
     if(ferror(file)) {
@@ -61,18 +61,33 @@ void execute(char *line)
             }
         }
         else {                  // Parent
-            int status;
-            wait(&status);
-            if(WIFEXITED(status)) {
-                if(WEXITSTATUS(status) != 0) {
-                    fprintf(stderr, "\nError: %s returned %d. Aborting...\n", command, WEXITSTATUS(status));
-                    exit(-1);
-                }
-            }
-            else if(WIFSIGNALED(status)) {
-                fprintf(stderr, "%s\n", "Current command executing process terminated by a signal. Aborting...");
-                exit(-1);
-            }
+            wait_for_child(command);
+        }
+    }
+}
+
+void wait_for_child(char *command)
+{
+    int status;
+    wait(&status);
+    if(WIFEXITED(status)) {
+        if(WEXITSTATUS(status) != 0) {
+            fprintf(stderr, "\nError: %s returned %d. Aborting...\n", command, WEXITSTATUS(status));
+            exit(-1);
+        }
+    }
+    else if(WIFSIGNALED(status)) {
+        fprintf(stderr, "Process executing command %s terminated by signal %s. Aborting...\n",
+            command, strsignal(WTERMSIG(status)));
+        exit(-1);
+    }
+}
+
+void strip_potential_newline(char *line)
+{
+    for(int i = 0; line[i] != '\0'; i++) {
+        if(line[i] == '\n') {
+            line[i] = '\0';
         }
     }
 }
@@ -123,13 +138,13 @@ char *get_env_value(char *line)
     if(line[idx] == '\0') {
         return NULL;
     }
-    int env_value_size = strlen(line + idx + 1);
-    char *env_value = malloc(env_value_size); // Allocate memory for characters up to, not including, the newline character, and '\n'
+    int env_len = strlen(line + idx + 1);
+    char *env_value = malloc(env_len + 1);
     if(env_value == NULL) {
         perror("Malloc error");
         return NULL;
     }
-    strncpy(env_value, (line + idx + 1), env_value_size - 1);
-    env_value[env_value_size] = '\0';
+    strncpy(env_value, (line + idx + 1), env_len);
+    env_value[env_len] = '\0';
     return env_value;
 }
