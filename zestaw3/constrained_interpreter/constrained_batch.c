@@ -167,7 +167,7 @@ void set_limits(long proc_time_limit, long virtual_mem_limit)
         perror("Error getting current cpu time limit");
         exit(-1);
     }
-    if(getrlimit(RLIMIT_MEMLOCK, &mem_limit) < 0) {
+    if(getrlimit(RLIMIT_AS, &mem_limit) < 0) {
         perror("Error getting current memory limit");
         exit(-1);
     }
@@ -185,7 +185,7 @@ void set_limits(long proc_time_limit, long virtual_mem_limit)
         perror("Error setting cpu time limit");
         exit(-1);
     }
-    if(setrlimit(RLIMIT_MEMLOCK, &mem_limit) < 0) {
+    if(setrlimit(RLIMIT_AS, &mem_limit) < 0) {
         perror("Error setting memory limit");
         exit(-1);
     }
