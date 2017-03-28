@@ -1,6 +1,8 @@
+#define _XOPEN_SOURCE 1
 #include <stdio.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 bool increment = true;
@@ -43,7 +45,7 @@ void write_alphabet()
 void die_on_sigint(int sigint)
 {
     if(sigint != SIGINT) {
-        fprintf("%s\n", "FATAL ERROR, SIGINT HANDLER DIDNT GET SIGINT");
+        fprintf(stderr, "%s\n", "FATAL ERROR, SIGINT HANDLER DIDNT GET SIGINT");
         _exit(-1);
     }
     printf("%s\n", "Odebrano sygnal SIGINT");
@@ -57,7 +59,7 @@ void set_sigtstp_handle()
 
     if(sigfillset(&signals_blocked) < 0) {
         perror("Couldn't fill signal mask");
-        exit(-1)
+        exit(-1);
     }
     if(sigdelset(&signals_blocked, SIGTSTP) < 0) {
         perror("Couldn't unblock SIGTSTP");
@@ -77,7 +79,7 @@ void set_sigtstp_handle()
 void reverse_on_sigtstp(int sigtstp)
 {
     if(sigtstp != SIGTSTP) {
-        fprintf("%s\n", "FATAL ERROR, SIGTSTP HANDLER DIDNT GET SIGTSTP");
+        fprintf(stderr, "%s\n", "FATAL ERROR, SIGTSTP HANDLER DIDNT GET SIGTSTP");
         _exit(-1);
     }
     increment = !increment;
