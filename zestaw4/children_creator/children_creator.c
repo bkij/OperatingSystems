@@ -2,10 +2,14 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
+
+const char *child_filename = "child.out";
 
 void print_usage_and_exit();
 void parse_arguments(char **argv, int *N, int *M);
 int validate_and_parse(char *string);
+void create_children(int N, int M);
 
 int main(int argc, char **argv)
 {
@@ -16,6 +20,7 @@ int main(int argc, char **argv)
         print_usage_and_exit();
     }
     parse_arguments(argv, &N, &M);
+    create_children(N, M);
     exit(0);
 }
 
@@ -42,4 +47,26 @@ int validate_and_parse(char *string)
         print_usage_and_exit();
     }
     return (int)tmp;
+}
+
+void create_children(int N, int M)
+{
+    pid_t pid;
+    for(int i = 0; i < N; i++) {
+        pid = fork();
+        if(pid < 0) {
+            perror("Fork error, aborting");
+            exit(-1);
+        }
+        else if(pid == 0) {
+            if(execl(child_filename, child_filename) < 0) {
+                perror("Execl error, child aborting");
+                exit(-1);
+            }
+        }
+        else {
+            // ??
+        }
+    }
+    // Wait for children
 }
