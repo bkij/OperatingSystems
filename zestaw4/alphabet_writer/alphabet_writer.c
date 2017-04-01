@@ -16,6 +16,10 @@ void reverse_on_sigtstp(int sigtstp);
 
 int main(void)
 {
+    if(signal(SIGINT, die_on_sigint) == SIG_ERR) {
+        perror("Coudln't set SIGINT handler");
+        exit(-1);
+    }
     set_sigtstp_handle();
     write_alphabet();
     exit(0);
