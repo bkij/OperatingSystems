@@ -11,6 +11,8 @@ void parse_arguments(char **argv, int *N, int *M);
 int validate_and_parse(char *string);
 void create_children(int N, int M);
 
+volatile sig_atomic_t num_requests = 0;
+
 int main(int argc, char **argv)
 {
     int N;
@@ -60,13 +62,11 @@ void create_children(int N, int M)
         }
         else if(pid == 0) {
             if(execl(child_filename, child_filename) < 0) {
-                perror("Execl error, child aborting");
+                perror("Execl error, aborting");
                 exit(-1);
             }
         }
-        else {
-            // ??
-        }
+        // Parent: go to next iteration
     }
-    // Wait for children
+    // TODO: Wait for children
 }
