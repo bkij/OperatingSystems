@@ -65,10 +65,6 @@ void set_sigtstp_handle()
         perror("Couldn't fill signal mask");
         exit(-1);
     }
-    if(sigdelset(&signals_blocked, SIGTSTP) < 0) {
-        perror("Couldn't unblock SIGTSTP");
-        exit(-1);
-    }
 
     action_def.sa_handler = reverse_on_sigtstp;
     action_def.sa_mask = signals_blocked;
