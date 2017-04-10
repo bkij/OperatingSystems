@@ -26,22 +26,17 @@ static jmp_buf after_signal;
 
 int main(int argc, char **argv)
 {
+    struct timeval before;
+    struct timeval after;
     srand48(get_random_seed());
-    struct rusage rusage_start;
-    if(setpgid(getpid(), getppid()) < 0) {
-        perror("Error setting group pid of child");
-        exit(-1);
-    }
     sleep(lrand48() % 10);
-    if(getrusage(RUSAGE_SELF, &rusage_start) < 0) {
-        perror("Couldn't get resource info");
-        exit(-1);
-    }
+    gettimeofday(&before, NULL);
     if(setjmp(after_signal) == 0) {
         send_sigusr1_and_wait();
     }
-    int time_elapsed = get_time_elapsed(&rusage_start);
-    printf("Child process %u: Time between sending SIGUSR request and sending RT signal (in seconds): %d\n", getpid(), time_elapsed);
+    gettimeofday(&after, NULL);
+    long time_elapsed = after.tv_sec - before.tv_sec;
+    printf("Child process %u: Time between sending SIGUSR request and sending RT signal (in seconds): %ld\n", getpid(), time_elapsed);
     exit(time_elapsed);
 }
 
@@ -68,21 +63,11 @@ void setup_signal_handle()
         perror("Couldn't set blocking mask");
         exit(-1);
     }
-    sig_info.sa_flags = 0;
+    sig_info.sa_flags = SA_RESTART;
     if(sigaction(SIGCONT, &sig_info, NULL) < 0) {
         perror("Couldn't set sigcont signal handler");
         exit(-1);
     }
-}
-
-int get_time_elapsed(struct rusage *rusage_start)
-{
-    struct rusage rusage_end;
-    if(getrusage(RUSAGE_SELF, &rusage_end) < 0) {
-        perror("Couldn't get resource info");
-        exit(-1);
-    }
-    return rusage_end.ru_utime.tv_sec - rusage_start->ru_utime.tv_sec + rusage_end.ru_stime.tv_sec - rusage_start->ru_stime.tv_sec;
 }
 
 void handle_sigcont(int sigcont)
@@ -99,13 +84,13 @@ void handle_sigcont(int sigcont)
 int get_random_seed()
 {
     char byte_buf[4];
-    int rand_fd = open("/dev/random", O_RDONLY);
+    int rand_fd = open("/dev/urandom", O_RDONLY);
     if(rand_fd < 0) {
-        perror("Error opening /dev/random");
+        perror("Error opening /dev/urandom");
         exit(-1);
     }
     if(read(rand_fd, byte_buf, 4) < 0) {
-        perror("Reading from /dev/random returned an error");
+        perror("Reading from /dev/urandom returned an error");
         exit(-1);
     }
     close(rand_fd);

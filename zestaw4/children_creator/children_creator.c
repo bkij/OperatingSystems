@@ -22,13 +22,14 @@ void sigusr1_handle(int sigusr1, siginfo_t *signal_info, void *context);
 void set_sigint_handle();
 void sigint_handle(int sigint);
 void set_rt_handles();
+void rt_handle(int, siginfo_t *, void *);
 
 volatile sig_atomic_t num_requests = 0;
 volatile sig_atomic_t request_threshold;
 
 // Children created
 pid_t children_pids[1024];
-int child_idx = 0;
+volatile sig_atomic_t child_idx = 0;
 
 int main(int argc, char **argv)
 {
@@ -41,7 +42,6 @@ int main(int argc, char **argv)
     parse_arguments(argv, &N, &M);
     request_threshold = M;
     signal(SIGTERM, SIG_IGN);   // Ignore as the process sends it to itself also
-    signal(SIGCONT, SIG_IGN);   // Ignore as the process sends it to itself also
     set_sigint_handle();
     set_sigusr1_handle();
     set_rt_handles();
@@ -99,10 +99,6 @@ void create_children(int N, int M)
                 exit(-1);
             }
         }
-        else {
-            children_pids[child_idx] = pid;
-            child_idx++;
-        }
     }
     // Wait for all children
     while(1) {
@@ -124,8 +120,21 @@ void create_children(int N, int M)
 
 void set_rt_handles()
 {
+    struct sigaction action_def;
+    sigset_t signals_blocked;
+    if(sigfillset(&signals_blocked) < 0) {
+        perror("Couldn't fill signal mask");
+        exit(-1);
+    }
+    action_def.sa_sigaction = rt_handle;
+    action_def.sa_mask = signals_blocked;
+    action_def.sa_flags = SA_SIGINFO | SA_RESTART;
+
     for(int sig = SIGRTMIN; sig <= SIGRTMAX; sig++) {
-        signal(sig, SIG_IGN);
+        if(sigaction(sig, &action_def, NULL) < 0) {
+            perror("Couldn't set signal action");
+            exit(-1);
+        }
     }
 }
 
@@ -141,7 +150,7 @@ void set_sigusr1_handle()
 
     action_def.sa_sigaction = sigusr1_handle;
     action_def.sa_mask = signals_blocked;
-    action_def.sa_flags = SA_SIGINFO;
+    action_def.sa_flags = SA_SIGINFO | SA_RESTART;
 
     if(sigaction(SIGUSR1, &action_def, NULL) < 0) {
         perror("Couldn't set signal action");
@@ -151,6 +160,8 @@ void set_sigusr1_handle()
 
 void sigusr1_handle(int sigusr1, siginfo_t *signal_info, void *context)
 {
+    children_pids[child_idx] = signal_info->si_pid;
+    child_idx++;
     num_requests++;
     if(num_requests == request_threshold) {
         for(int i = 0; i < child_idx; i++) {
@@ -166,6 +177,11 @@ void sigusr1_handle(int sigusr1, siginfo_t *signal_info, void *context)
             write(STDERR_FILENO, buf, strlen(buf));
         }
     }
+}
+
+void rt_handle(int sigrt, siginfo_t *signal_info, void *context)
+{
+    printf("Got signal %s from child: %u\n", strsignal(sigrt), signal_info->si_pid);
 }
 
 void set_sigint_handle()
