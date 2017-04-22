@@ -8,3 +8,6 @@ add_executable(master.out ${MASTER_SOURCES})
 
 set(SLAVE_SOURCES slave.c slave_fun.c)
 add_executable(slave.out ${SLAVE_SOURCES})
+
+target_link_libraries(master.out -lm)
+target_link_libraries(slave.out -lm)
