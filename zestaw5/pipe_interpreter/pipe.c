@@ -29,11 +29,6 @@ void execute_pipe(char *command)
             break;
         }
         parse_command(current_command_string, &current_command, command);
-        printf("%s\n", current_command.command_name);
-        for(int i = 0; current_command.command_args[i] != NULL; i++) {
-            printf("%s ", current_command.command_args[i]);
-        }
-        printf("\n");
         if(pipe(pipe_fds[i]) < 0) {
             err_exit("pipe error");
         }
@@ -73,8 +68,10 @@ void manage_pipeline(int pipe_fd[MAX_COMMANDS][2], int idx, bool last_command)
         close(pipe_fd[i][WRITE_END]);
     }
     if(idx == 0) {
-        if(dup2(pipe_fd[idx][WRITE_END], STDOUT_FILENO) < 0) {
-            err_exit("dup2 error");
+        if(!last_command) {
+            if(dup2(pipe_fd[idx][WRITE_END], STDOUT_FILENO) < 0) {
+                err_exit("dup2 error");
+            }
         }
         close(pipe_fd[idx][WRITE_END]);
     }
