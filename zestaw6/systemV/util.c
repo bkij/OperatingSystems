@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "util.h"
 
 void err_exit(const char *s)
