@@ -1,6 +1,5 @@
-#define _XOPEN_SOURCE
-#include <sys/msg.h>
-#include <sys/ipc.h>
+#define _XOPEN_SOURCE 500
+#include <mqueue.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -13,7 +12,6 @@
 #include "messaging.h"
 #include "util.h"
 
-// TODO: Get messages from public queue
 
 // Helper
 static void init_clients(ClientInfo *clients)
@@ -69,16 +67,14 @@ static void handle_conn_request(const ConnRequestBuf *connRequestBuf, ClientInfo
 {
     int client_id = add_client(clients, connRequestBuf->conn_request.msqid);
     ConnResponseBuf responseBuf = {.type = CONN,.id = client_id};
-    if(msgsnd(clients->clients_msqids[client_id], &responseBuf, sizeof(ConnResponseBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
+    if(mq_send(clients->client_mqids[client_id], (char *)responseBuf, sizeof(ResponseBuf), 0L) < 0) {
         err_exit("MQ error");
     }
 }
 
-static void handle_echo_request(const EchoBuf *echoBuf, const int msqid)
+static void handle_echo_request(const EchoBuf *echoBuf, const mqd_t mq_id)
 {
-    if(msgsnd(msqid, echoBuf, sizeof(EchoBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
-        err_exit("MQ error");
-    }
+    if(mqsnd(mq_id, (char *)echoBuf, sizeof(EchoBuf)))
 }
 static void handle_capitalize_request(CapitalizeBuf *capitalizeBuf, const int msqid)
 {
@@ -150,37 +146,32 @@ static void dispatch_request(RequestBuf *buf, ClientInfo *clients, bool *shutdow
     }
 }
 
-int create_public_queue(void)
+mqd_t create_public_queue(const char *public_q_pathname)
 {
-    wordexp_t path_container;
-    if(wordexp(PUBLIC_Q_PATH, &path_container, WRDE_UNDEF) < 0) {
-        err_exit("Couldn't expand $HOME path");
+    mqd_t public_q_id = mq_open(public_q_pathname, O_RDONLY | O_CREAT);
+    if(public_q_id < 0) {
+        err_exit("Couldnt create public MQ");
     }
-    key_t public_q_key = ftok(path_container.we_wordv[0], PUBLIC_Q_ID);
-    int msqid = msgget(public_q_key, MSG_PERM | IPC_CREAT);
-    if(msqid < 0) {
-        err_exit("Error creating public message queue");
-    }
-    wordree(&path_container);
-    return msqid;
+    return public_q_id;
 }
 
-void listen(const int msqid)
+void listen(const mqd_t public_q_id)
 {
     RequestBuf requestBuf;
     ClientInfo clients;
-    int msg_ret_val;
+    ssize_t msg_ret_val;
+    unsigned int msg_prio;
     bool shutdown = false;
 
     init_clients(&clients);
 
     while(!shutdown || clients_connected(&clients)) {
         memset(&requestBuf, 0, sizeof(RequestBuf));
-        msg_ret_val = msgrcv(msqid, &requestBuf, MAX_REQUEST_SIZE, 0L, IPC_NOWAIT);
+        msg_ret_val = mq_receive(public_q_id, (char *)&requestBuf, sizeof(RequestBuf), &msg_prio);
         if(msg_ret_val > 0) {
             dispatch_request(&requestBuf, &clients, &shutdown);
         }
-        else if(msg_ret_val < 0 && errno != ENOMSG) {
+        else if(msg_ret_val < ) {
             err_exit("MQ error");
         }
     }

@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
-#include <wordexp.h>
 #include "mq_client.h"
 #include "util.h"
 #include "messaging.h"
@@ -136,7 +135,6 @@ int get_public_q(void)
     if(public_msqid < 0) {
         err_exit("Error opening public queue");
     }
-    wordfree(&path_container);
     return public_msqid;
 }
 
