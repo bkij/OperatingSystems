@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <unistd.h>
+#include <mqueue.h>
 #include "messaging.h"
 
 #define MAX_CLIENTS 10
@@ -10,7 +11,7 @@
 // Data structures and typedefs
 typedef void (*CleanupFunction)(void);
 typedef struct ClientInfo {
-    int clients_msqids[MAX_CLIENTS];
+    mqd_t clients_msqids[MAX_CLIENTS];
     int size;
 } ClientInfo;
 typedef struct RequestBuf {

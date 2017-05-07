@@ -12,9 +12,10 @@
 
 #define MAX_MSG_SIZE 256
 #define MAX_REQUEST_SIZE 300
+#define MAX_Q_NAME 64
 
 typedef struct ConnRequest {
-    int msqid;
+    char q_name[MAX_Q_NAME];
     pid_t pid;
 } ConnRequest;
 

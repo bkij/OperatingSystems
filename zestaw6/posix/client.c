@@ -3,14 +3,14 @@
 #include <sys/ipc.h>
 #include <stdio.h>
 #include "mq_client.h"
+#include "messaging.h"
 #include "util.h"
 
 /*
  * Global because the MQ needs to be cleaned up in case of
  * a premature termination (e.g by signal) 
  */
-static int private_msqid;
-static int public_msqid;
+static char private_q_name[MAX_Q_NAME];
 
 void cleanup_private(void);
 
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 
 void cleanup_private(void)
 {
-    if(msgctl(private_msqid, IPC_RMID, NULL) < 0) {
+    if(mq_unlink(private_q_name) < 0) {
         err_exit("Couldnt cleanup private MQ");
     }
 }

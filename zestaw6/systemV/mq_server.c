@@ -21,14 +21,16 @@ static void init_clients(ClientInfo *clients)
     clients->size = 0;
     for(int i = 0; i < MAX_CLIENTS; i++) {
         clients->clients_msqids[i] = -1;
+        clients->clients_pids[i] = -1;
     }
 }
 
-static int add_client(ClientInfo *clients, const int msqid)
+static int add_client(ClientInfo *clients, const int msqid, const pid_t client_pid)
 {
     for(int i = 0; i < MAX_CLIENTS; i++) {
         if(clients->clients_msqids[i] == - 1) {
             clients->clients_msqids[i] = msqid;
+            clients->clients_pids[i] = client_pid;
             return i;
         }
     }
@@ -38,6 +40,7 @@ static int add_client(ClientInfo *clients, const int msqid)
 static void remove_client(ClientInfo *clients, const int idx)
 {
     clients->clients_msqids[idx] = -1;
+    clients->clients_pids[idx] = -1;
 }
 
 static bool clients_connected(const ClientInfo *clients)
@@ -67,30 +70,41 @@ void register_cleanup_functions(const CleanupFunction functions[], const int len
 // MQ Functions
 static void handle_conn_request(const ConnRequestBuf *connRequestBuf, ClientInfo *clients)
 {
-    int client_id = add_client(clients, connRequestBuf->conn_request.msqid);
+    printf("Got a connection request from PID: %d\n", connRequestBuf->conn_request.pid);
+    int client_id = add_client(clients, connRequestBuf->conn_request.msqid, connRequestBuf->conn_request.pid);
     ConnResponseBuf responseBuf = {.type = CONN,.id = client_id};
     if(msgsnd(clients->clients_msqids[client_id], &responseBuf, sizeof(ConnResponseBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
         err_exit("MQ error");
     }
 }
 
-static void handle_echo_request(const EchoBuf *echoBuf, const int msqid)
+static void handle_echo_request(const EchoBuf *echoBuf, ClientInfo *clients)
 {
-    if(msgsnd(msqid, echoBuf, sizeof(EchoBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
+    const int client_msqid = clients->clients_msqids[echoBuf->msgInfo.client_id];
+    const pid_t client_pid = clients->clients_pids[echoBuf->msgInfo.client_id];
+    printf("Got an echo request from PID: %d, owning message queue with ID: %d\n", client_pid, client_msqid);
+    if(msgsnd(client_msqid, echoBuf, sizeof(EchoBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
         err_exit("MQ error");
     }
 }
-static void handle_capitalize_request(CapitalizeBuf *capitalizeBuf, const int msqid)
+static void handle_capitalize_request(CapitalizeBuf *capitalizeBuf, ClientInfo *clients)
 {
+    const int client_msqid = clients->clients_msqids[capitalizeBuf->msgInfo.client_id];
+    const pid_t client_pid = clients->clients_pids[capitalizeBuf->msgInfo.client_id];
+    printf("Got a capitalize request from PID: %d, owning message queue with ID: %d\n", client_pid, client_msqid);
     for(int i = 0; capitalizeBuf->msgInfo.msg[i] != '\0'; i++) {
         capitalizeBuf->msgInfo.msg[i] = toupper(capitalizeBuf->msgInfo.msg[i]);
     }
-    if(msgsnd(msqid, capitalizeBuf, sizeof(CapitalizeBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
+    if(msgsnd(client_msqid, capitalizeBuf, sizeof(CapitalizeBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
         err_exit("MQ error");
     }
 }
-static void handle_time_request(const int msqid)
+static void handle_time_request(const int client_id, ClientInfo *clients)
 {
+    const int client_msqid = clients->clients_msqids[client_id];
+    const pid_t client_pid = clients->clients_pids[client_id];
+    printf("Got a datetime request from PID: %d, owning message queue with ID: %d\n", client_pid, client_msqid);
+
     TimeResponseBuf response = {.type = TIME};
     time_t timer;
     struct tm *time_info;
@@ -100,7 +114,7 @@ static void handle_time_request(const int msqid)
 
     strftime(response.time, sizeof(response.time), "%Y-%m-%d %H:%M:%S\n", time_info);
 
-    if(msgsnd(msqid, &response, sizeof(TimeResponseBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
+    if(msgsnd(client_msqid, &response, sizeof(TimeResponseBuf), IPC_NOWAIT) < 0 && errno != EAGAIN) {
         err_exit("MQ error");
     }
 }
@@ -112,7 +126,6 @@ static void dispatch_request(RequestBuf *buf, ClientInfo *clients, bool *shutdow
     TimeRequestBuf timeRequestBuf;
     CloseConnBuf closeConnBuf;
     ConnRequestBuf connRequestBuf;
-    int client_msqid;
 
     switch(buf->type) {
         case CONN:
@@ -123,25 +136,25 @@ static void dispatch_request(RequestBuf *buf, ClientInfo *clients, bool *shutdow
         case ECHO:
             echoBuf.type = ECHO;
             echoBuf.msgInfo = buf->data.msgInfo;
-            client_msqid = clients->clients_msqids[echoBuf.msgInfo.client_id];
-            handle_echo_request(&echoBuf, client_msqid);
+            handle_echo_request(&echoBuf, clients);
             break;
         case CAPITALIZE:
             capitalizeBuf.type = CAPITALIZE;
             capitalizeBuf.msgInfo = buf->data.msgInfo;
-            client_msqid = clients->clients_msqids[echoBuf.msgInfo.client_id];
-            handle_capitalize_request(&capitalizeBuf, client_msqid);
+            handle_capitalize_request(&capitalizeBuf, clients);
             break;
         case TIME:
             timeRequestBuf.type = TIME;
             timeRequestBuf.client_id = buf->data.client_id;
-            client_msqid = clients->clients_msqids[timeRequestBuf.client_id];
-            handle_time_request(client_msqid);
+            handle_time_request(timeRequestBuf.client_id, clients);
             break;
         case CLOSE:
             closeConnBuf.type = CLOSE;
             closeConnBuf.client_id = buf->data.client_id;
-            printf("ID to remove: %d\n", closeConnBuf.client_id);
+            printf(
+                "Got a close request from PID: %d with message queue ID: %d\n",
+                clients->clients_pids[closeConnBuf.client_id], clients->clients_msqids[closeConnBuf.client_id]
+            );
             remove_client(clients, closeConnBuf.client_id);
             *shutdown = true;
             break;
@@ -161,7 +174,7 @@ int create_public_queue(void)
     if(msqid < 0) {
         err_exit("Error creating public message queue");
     }
-    wordree(&path_container);
+    wordfree(&path_container);
     return msqid;
 }
 

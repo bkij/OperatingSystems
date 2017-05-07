@@ -11,6 +11,7 @@
 typedef void (*CleanupFunction)(void);
 typedef struct ClientInfo {
     int clients_msqids[MAX_CLIENTS];
+    pid_t clients_pids[MAX_CLIENTS];
     int size;
 } ClientInfo;
 typedef struct RequestBuf {
