@@ -2,6 +2,7 @@
 #define MESSAGING_H
 
 #define PUBLIC_Q_PATHNAME "/public_q_1"
+#define PRIVATE_Q_TEMPLATE "/private_q_x"
 #define MSG_PERM 0600
 
 #define CONN 1L

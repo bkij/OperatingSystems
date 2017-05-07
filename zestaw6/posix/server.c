@@ -11,7 +11,7 @@ void free_pathnames(void);
 int main(int argc, char **argv)
 {
     CleanupFunction functions[] = {cleanup_queues};
-    const mqd_t public_q_id = create_public_queue(PUBLIC_Q_PATHNAME);
+    const mqd_t public_q_id = create_public_queue();
     register_cleanup_functions(functions, ARRAY_LEN(functions));
     listen(public_q_id);
     printf("%s\n", "No more clients, exiting...");

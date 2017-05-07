@@ -16,13 +16,13 @@ void cleanup_private(void);
 
 int main(int argc, char **argv)
 {
-    public_msqid = get_public_q();
-    private_msqid = create_private_q();
+    const mqd_t public_msqid = get_public_q();
+    const mqd_t private_msqid = create_private_q(private_q_name);
 
     CleanupFunction functions[] = {cleanup_private};
     register_cleanup_functions(functions, ARRAY_LEN(functions));
     
-    send_conn_request(public_msqid, private_msqid);
+    send_conn_request(public_msqid, private_q_name);
     int client_id = get_id(private_msqid);
     request_loop(public_msqid, private_msqid, client_id);
     return 0;

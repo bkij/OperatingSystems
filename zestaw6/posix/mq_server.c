@@ -24,11 +24,11 @@ static void init_clients(ClientInfo *clients)
     }
 }
 
-static int add_client(ClientInfo *clients, const q_name[MAX_Q_NAME], const pid_t pid)
+static int add_client(ClientInfo *clients, const char q_name[MAX_Q_NAME], const pid_t pid)
 {
     for(int i = 0; i < MAX_CLIENTS; i++) {
         if(clients->clients_msqids[i] == - 1) {
-            clients->clients_msqids[i] = mq_open(q_name, O_RDONLY);
+            clients->clients_msqids[i] = mq_open(q_name, O_WRONLY);
             if(clients->clients_msqids[i] < 0) {
                 err_exit("Couldnt't open client's queue");
             }
@@ -74,7 +74,7 @@ static void handle_conn_request(const ConnRequestBuf *connRequestBuf, ClientInfo
     printf("Got a connection request from PID: %d\n", connRequestBuf->conn_request.pid);
     int client_id = add_client(clients, connRequestBuf->conn_request.q_name, connRequestBuf->conn_request.pid);
     ConnResponseBuf responseBuf = {.type = CONN,.id = client_id};
-    if(mq_send(clients->client_msqids[client_id], (char *)responseBuf, sizeof(ResponseBuf), 0L) < 0) {
+    if(mq_send(clients->clients_msqids[client_id], (char *)&responseBuf, sizeof(ConnResponseBuf), 0L) < 0) {
         err_exit("MQ error");
     }
 }
@@ -83,8 +83,8 @@ static void handle_echo_request(const EchoBuf *echoBuf, ClientInfo *clients)
 {
     const mqd_t client_mq_id = clients->clients_msqids[echoBuf->msgInfo.client_id];
     const pid_t client_pid = clients->clients_pids[echoBuf->msgInfo.client_id];
-    printf("Got an echo request from PID: %d, owning message queue with ID: %d\n", client_pid, client_msqid);
-    if(mq_send(client_mq_id, (char *)echoBuf, sizeof(EchoBuf) 0) < 0) {
+    printf("Got an echo request from PID: %d, owning message queue with ID: %d\n", client_pid, client_mq_id);
+    if(mq_send(client_mq_id, (char *)echoBuf, sizeof(EchoBuf), 0) < 0) {
         err_exit("MQ error");
     }
 }
@@ -93,11 +93,11 @@ static void handle_capitalize_request(CapitalizeBuf *capitalizeBuf, ClientInfo *
 {
     const mqd_t client_mq_id = clients->clients_msqids[capitalizeBuf->msgInfo.client_id];
     const pid_t client_pid = clients->clients_pids[capitalizeBuf->msgInfo.client_id];
-    printf("Got a capitalize request from PID: %d, owning message queue with ID: %d\n", client_pid, client_msqid);
+    printf("Got a capitalize request from PID: %d, owning message queue with ID: %d\n", client_pid, client_mq_id);
     for(int i = 0; capitalizeBuf->msgInfo.msg[i] != '\0'; i++) {
         capitalizeBuf->msgInfo.msg[i] = toupper(capitalizeBuf->msgInfo.msg[i]);
     }
-    if(mq_send(client_mq_id, capitalizeBuf, sizeof(CapitalizeBuf), 0) < 0) {
+    if(mq_send(client_mq_id, (char*)capitalizeBuf, sizeof(CapitalizeBuf), 0) < 0) {
         err_exit("MQ error");
     }
 }
@@ -106,7 +106,7 @@ static void handle_time_request(const int client_id, ClientInfo *clients)
 {
     const mqd_t client_mq_id = clients->clients_msqids[client_id];
     const pid_t client_pid = clients->clients_pids[client_id];
-    printf("Got a datetime request from PID: %d, owning message queue with ID: %d\n", client_pid, client_msqid);
+    printf("Got a datetime request from PID: %d, owning message queue with ID: %d\n", client_pid, client_mq_id);
 
     TimeResponseBuf response = {.type = TIME};
     time_t timer;
@@ -117,7 +117,7 @@ static void handle_time_request(const int client_id, ClientInfo *clients)
 
     strftime(response.time, sizeof(response.time), "%Y-%m-%d %H:%M:%S\n", time_info);
 
-    if(mq_send(client_mq_id, &response, sizeof(TimeResponseBuf), 0) < 0) {
+    if(mq_send(client_mq_id, (char *)&response, sizeof(TimeResponseBuf), 0) < 0) {
         err_exit("MQ error");
     }
 }
@@ -129,7 +129,6 @@ static void dispatch_request(RequestBuf *buf, ClientInfo *clients, bool *shutdow
     TimeRequestBuf timeRequestBuf;
     CloseConnBuf closeConnBuf;
     ConnRequestBuf connRequestBuf;
-    int client_msqid;
 
     switch(buf->type) {
         case CONN:
@@ -160,7 +159,7 @@ static void dispatch_request(RequestBuf *buf, ClientInfo *clients, bool *shutdow
                 clients->clients_pids[closeConnBuf.client_id],
                 clients->clients_msqids[closeConnBuf.client_id]    
             );
-            if(mq_close(client->clients_msqids[closeConnBuf.client_id])) {
+            if(mq_close(clients->clients_msqids[closeConnBuf.client_id])) {
                 err_exit("Couldnt close client queue");
             }
             remove_client(clients, closeConnBuf.client_id);
@@ -171,9 +170,14 @@ static void dispatch_request(RequestBuf *buf, ClientInfo *clients, bool *shutdow
     }
 }
 
-mqd_t create_public_queue(const char *public_q_pathname)
+mqd_t create_public_queue()
 {
-    mqd_t public_q_id = mq_open(public_q_pathname, O_RDONLY | O_CREAT | O_EXCL);
+    struct mq_attr attr;
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = 40;
+    attr.mq_msgsize = sizeof(EchoBuf);
+    attr.mq_curmsgs = 0;
+    mqd_t public_q_id = mq_open(PUBLIC_Q_PATHNAME, O_RDONLY | O_CREAT | O_EXCL, 0600, &attr);
     if(public_q_id < 0) {
         err_exit("Couldnt create public MQ");
     }
