@@ -14,8 +14,10 @@ int main(int argc, char **argv)
     }
     parse_args(**argv, &num_chairs);
 
-    int shm_id = initialize_mem();
-    barber_loop(shm_id, num_chairs);
+    struct shared_memory *shm = create_memory(num_chairs);
+    int barber_sem_id = create_barber_semaphore();
+    int shm_sem_id = create_shm_semaphore();
+    barber_loop(barber_sem_id, shm_sed_id, shm);
 
     exit(EXIT_SUCCESS);
 }
@@ -23,7 +25,7 @@ int main(int argc, char **argv)
 void parse_args(char **argv, int *num_chairs)
 {
     long tmp = strtol(argv[1], NULL, 10);
-    if(tmp <= 0 || tmp > 256 || errno == ERANGE) {
+    if(tmp <= 0 || tmp > MAX_SEATS || errno == ERANGE) {
         err_exit("Invalid N argument (integer; min 1 max 256)");
     }
     *num_chairs = (int)tmp;
