@@ -80,3 +80,15 @@ pid_t atomic_pop(struct circular_q *q, int binary_sem_id)
      struct sembuf give = {BINARY_SEM_NUM, SEM_GIVE, SEM_UNDO};
      return semop(binary_sem_id, &give, 1);
  }
+
+/*
+ *  BARBER SEMAPHORE FUNCTIONS
+ */
+pid_t barber_sem_take_with_pid(const int barber_sem_id)
+{
+    struct semid_ds sem_info;
+    struct sembuf stat_and_take[2];
+    stat_and_take[0] = {BARBER_SEM_NUM, }
+    // ???
+}
+int barber_sem_give_if_sleeping(const int barber_sem_id);

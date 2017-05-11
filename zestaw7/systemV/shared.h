@@ -23,7 +23,6 @@
 #define BARBER_WAIT -1
 #define BARBER_SIGNAL 1
 
-
 #define BINARY_SEM_PATH "/home"
 #define BINARY_SEM_KEY 'B'
 #define BINARY_SEM_PERM 0600
