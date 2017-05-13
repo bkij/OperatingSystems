@@ -8,3 +8,6 @@ add_executable(sleepingbarber.out ${BARBER_SRC})
 
 set(CLIENT_CREATOR_SRC client_creator.c util.c)
 add_executable(client_creator.out ${CLIENT_CREATOR_SRC})
+
+set(CLIENT_SRC client.c client_fun.c shared.c util.c)
+add_executable(client.out ${CLIENT_SRC})

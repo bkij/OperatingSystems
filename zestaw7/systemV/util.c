@@ -1,6 +1,8 @@
+#define _POSIX_C_SOURCE 199309L
 #include <stdlib.h>
 #include <errno.h>
 #include <time.h>
+#include <stdio.h>
 #include "util.h"
 
 void err_exit(const char *why)

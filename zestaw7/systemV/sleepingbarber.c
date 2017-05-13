@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "util.h"
+#include "shared.h"
 #include "barber_fun.h"
 
 void parse_args(char **argv, int *num_chairs);
@@ -12,12 +14,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s\n", "Usage: ./sleepingbarber.out N");
         exit(EXIT_FAILURE);
     }
-    parse_args(**argv, &num_chairs);
+    parse_args(argv, &num_chairs);
 
     struct shared_memory *shm = create_memory(num_chairs);
     int barber_sem_id = create_barber_semaphore();
     int shm_sem_id = create_shm_semaphore();
-    barber_loop(barber_sem_id, shm_sed_id, shm);
+    barber_loop(barber_sem_id, shm_sem_id, shm);
 
     exit(EXIT_SUCCESS);
 }
