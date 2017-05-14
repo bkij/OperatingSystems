@@ -1,0 +1,145 @@
+RAPORT ZAD2
+
+
+INFORMACJE SYSTEMOWE:
+
+Linux kvWeasel 4.4.0-75-generic #96-Ubuntu SMP Thu Apr 20 09:56:33 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+VARIANT 1:
+
+Signal number 9:
+
+
+
+
+Signal number 15:
+
+
+
+
+Signal number 10:
+
+
+
+
+VARIANT 2:
+
+Signal number 9:
+
+
+
+
+Signal number 15:
+
+
+
+
+Signal number 10:
+
+
+
+
+VARIANT 3:
+
+Signal number 9:
+
+
+
+
+Signal number 15:
+
+Pattern a found by thread 140710855390976
+Pattern a found by thread 140710855390976
+Pattern a found by thread 140710855390976
+Pattern a found by thread 140710855390976
+Pattern a found by thread 140710855390976
+Pattern a found by thread 140710855390976
+Thread 140710846998272 - no pattern found
+Thread 140710838605568 - no pattern found
+Thread 140710830212864 - no pattern found
+PID 12071, TID 140710863685376 got signal Terminated.Thread 140710821820160 - no pattern found
+
+
+
+Signal number 10:
+
+Pattern a found by thread 140207476254464
+Pattern a found by thread 140207459469056
+Pattern a found by thread 140207476254464
+Pattern a found by thread 140207476254464
+Pattern a found by thread 140207476254464
+Thread 140207467861760 - no pattern found
+Pattern a found by thread 140207459469056
+PID 12084, TID 140207484548864 got signal User defined signal 1.Thread 140207442683648 - no pattern found
+Thread 140207451076352 - no pattern found
+
+
+
+VARIANT 4:
+
+Signal number 9:
+
+
+
+
+Signal number 15:
+
+Pattern a found by thread 140066244470528
+Pattern a found by thread 140066236077824
+Pattern a found by thread 140066244470528
+Pattern a found by thread 140066236077824
+Pattern a found by thread 140066236077824
+Pattern a found by thread 140066236077824
+Thread 140066227685120 - no pattern found
+Thread 140066219292416 - no pattern found
+Thread 140066210899712 - no pattern found
+
+
+
+Signal number 10:
+
+
+
+
+VARIANT 5:
+
+Signal number 9:
+
+
+
+
+Signal number 15:
+
+Pattern a found by thread 140543026214656
+Pattern a found by thread 140543034607360
+Pattern a found by thread 140543017821952
+Pattern a found by thread 140543026214656
+Pattern a found by thread 140543026214656
+Pattern a found by thread 140543026214656
+Thread 140542939756288 - no pattern found
+PID 12116, TID 140543034607360 got signal Terminated.Thread 140542931363584 - no pattern found
+
+
+
+Signal number 10:
+
+Pattern a found by thread 140204316501760
+PID 12129, TID 140204324894464 got signal User defined signal 1.Pattern a found by thread 140204324894464
+Pattern a found by thread 140204174210816
+Pattern a found by thread 140204316501760
+Pattern a found by thread 140204308109056
+Pattern a found by thread 140204324894464
+Thread 140204299716352 - no pattern found
+
+
+
+TERMINAL OUTPUT:
+./test.sh: line 18: 12029 Killed                  ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12035 Terminated              ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12041 User defined signal 1   ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12047 Killed                  ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12053 Terminated              ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12059 User defined signal 1   ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12065 Killed                  ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12090 Killed                  ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12104 User defined signal 1   ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
+./test.sh: line 18: 12110 Killed                  ./reader.out 5 infile 5 a 3 $Variant $Sig 2> 1 >> zad2.raport
