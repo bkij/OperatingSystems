@@ -10,9 +10,9 @@ void parse_args(char **argv, int *num_threads, char *filename, int *num_records,
 int main(int argc, char **argv)
 {
     int num_threads;
-    char *filename;
+    char filename[MAX_FILENAME_SIZE];
     int num_records;
-    char *pattern;
+    char pattern[MAX_PATTERN_SIZE];
     int type;
     if(argc < 6) {
         fprintf(stderr, "%s\n", "Not enough arguments");
