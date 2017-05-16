@@ -87,7 +87,7 @@ void barber_loop(sem_t *barber_sem_id, sem_t *shm_sem_id, sem_t *haircut_sem_id,
                 sem_post(shm_sem_id);
                 break;
             }
-            sem_wait(shm_sem_id);
+            sem_post(shm_sem_id);
             print_haircut_start(current_pid);
             sem_post(haircut_sem_id);
             print_haircut_end(current_pid);

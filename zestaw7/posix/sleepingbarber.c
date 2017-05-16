@@ -50,6 +50,7 @@ void cleanup_exit(int signo)
     if(sem_unlink(CUSTOMERS_SEM_PATH) < 0 ) {
         err_exit("fatal error");
     }
+    exit(EXIT_SUCCESS);
 }
 
 void parse_args(char **argv, int *num_chairs)
