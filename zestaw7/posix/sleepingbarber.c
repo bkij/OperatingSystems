@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <signal.h>
-#include <sys/shm.h>
+#include <sys/mman.h>
 #include "util.h"
 #include "shared.h"
 #include "barber_fun.h"
@@ -12,9 +12,9 @@ void parse_args(char **argv, int *num_chairs);
 void cleanup_exit(int signo);
 
 int shm_id;
-int barber_sem_id;
-int shm_sem_id;
-int haircut_sem_id;
+sem_t *barber_sem_id;
+sem_t *shm_sem_id;
+sem_t *haircut_sem_id;
 struct shared_memory *shm;
 
 int main(int argc, char **argv)
@@ -38,20 +38,17 @@ int main(int argc, char **argv)
 
 void cleanup_exit(int signo)
 {
-    if(shmdt((void *)shm) < 0) {
+    if(shm_unlink(SHARED_MEM_FTOK_PATH) < 0) {
         err_exit("fatal error at cleanup");
     }
-    if(shmctl(shm_id, IPC_RMID, NULL) < 0) {
-        err_exit("fatal error at cleanup");
+    if(sem_unlink(BARBER_SEM_PATH) < 0) {
+        err_exit("fatal error");
     }
-    if(semctl(barber_sem_id, 0, IPC_RMID) < 0) {
-        err_exit("fatal error at cleanup");
+    if(sem_unlink(BINARY_SEM_PATH) < 0) {
+        err_exit("fatal error");
     }
-    if(semctl(shm_sem_id, 0, IPC_RMID) < 0) {
-        err_exit("fatal error at celanup");
-    }
-    if(semctl(haircut_sem_id, 0, IPC_RMID) < 0) {
-        err_exit("fatal error at cleanup");
+    if(sem_unlink(CUSTOMERS_SEM_PATH) < 0 ) {
+        err_exit("fatal error");
     }
 }
 

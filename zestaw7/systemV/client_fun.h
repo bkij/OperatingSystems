@@ -4,11 +4,13 @@
 #include <unistd.h>
 #include "shared.h"
 
-void haircut_loop(struct shared_memory *shm, const int barber_sem_id, const int shm_sem_id, const int max_haircuts);
+void haircut_loop(struct shared_memory *shm, const int barber_sem_id, const int shm_sem_id, const int customers_sem_id, const int max_haircuts);
 struct shared_memory *get_memory();
 int get_barber_sem();
 int get_shm_sem();
+int get_customers_sem();
 
+void wait_for_cut();
 void enqueue(struct shared_memory *shm, const int shm_sem_id);
 void client_push(struct circular_queue *client_q, const int shm_sem_id);
 

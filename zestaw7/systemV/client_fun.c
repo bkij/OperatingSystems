@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
@@ -10,26 +11,47 @@
 extern volatile sig_atomic_t haircut_finished;
 extern volatile sig_atomic_t current_haircuts;
 
-void haircut_loop(struct shared_memory *shm, const int barber_sem_id, const int shm_sem_id, const int max_haircuts)
+void haircut_loop(struct shared_memory *shm, const int barber_sem_id, const int shm_sem_id, const int haircut_sem_id, const int max_haircuts)
 {
+    struct circular_queue *client_q = &shm->clients;
     while(current_haircuts < max_haircuts) {
-        // Check barber status
-        struct sembuf status_check = {BARBER_SEM_NUM, BARBER_WAIT, SEM_UNDO | IPC_NOWAIT};
-        if(semop(barber_sem_id, &status_check, 1) < 0) {
-            if(errno == EAGAIN) {
-                enqueue(shm, shm_sem_id);
+        binary_sem_take(shm_sem_id);
+        if(barber_awake(barber_sem_id)) {
+            if(push(client_q, getpid())) {
+                print_client_enqueued();
+                binary_sem_give(shm_sem_id);
+                haircut_sem_take(haircut_sem_id);
+                current_haircuts++;
+                print_leaving_barbershop();
             }
             else {
-                err_exit("Barber semaphore error");
+                print_no_seats();
+                binary_sem_give(shm_sem_id);
             }
         }
         else {
+            barber_sem_give(barber_sem_id);
             print_barber_woken();
-            while(!haircut_finished) {}
-            haircut_finished = 0;
+            shm->first_pid = getpid();
+            binary_sem_give(shm_sem_id);
+            haircut_sem_take(haircut_sem_id);
+            current_haircuts++;
             print_leaving_barbershop();
         }
     }
+}
+
+void wait_for_cut()
+{
+    sigset_t mask;
+    if(sigfillset(&mask) < 0) {
+        err_exit("Couldnt set mask value");
+    }
+    if(sigdelset(&mask, SIGUSR1) < 0) {
+        err_exit("Coultdnt set mask value");
+    }
+    sigsuspend(&mask);
+    print_leaving_barbershop();
 }
 
 struct shared_memory *get_memory()
@@ -66,6 +88,16 @@ int get_shm_sem()
     return sem_id;
 }
 
+int get_customers_sem()
+{
+    key_t sem_key = ftok(CUSTOMERS_SEM_PATH, CUSTOMERS_SEM_KEY);
+    int sem_id = -1;
+    do {
+        sem_id = semget(sem_key, CUSTOMERS_NSEMS, 0);
+    } while(sem_id < 0);
+    return sem_id;
+}
+
 void enqueue(struct shared_memory *shm, const int shm_sem_id)
 {
     struct circular_queue *client_q = &shm->clients;
@@ -75,45 +107,34 @@ void enqueue(struct shared_memory *shm, const int shm_sem_id)
 void client_push(struct circular_queue *client_q, const int shm_sem_id)
 {
     pid_t pid = getpid();
-    if(binary_sem_take(shm_sem_id) < 0) {
-        err_exit("Binary semaphore error");
-    }
     if(push(client_q, pid)) {
         print_client_enqueued();
-        if(binary_sem_give(shm_sem_id) < 0) {
-            err_exit("Binary semaphore error");
-        }
+        binary_sem_give(shm_sem_id);
         while(!haircut_finished) {}
         haircut_finished = 0;
     }
     else {
         print_no_seats();
-        if(binary_sem_give(shm_sem_id) < 0) {
-            err_exit("Binary semaphore error");
-        }
+        binary_sem_give(shm_sem_id);
     }
 }
 
 void print_barber_woken()
 {
-    print_timestamp();
-    printf("Barber woken up by PID %d\n", getpid());
+    printf("%lld : Barber woken up by PID %d\n", timestamp(), getpid());
 }
 
 void print_leaving_barbershop()
 {
-    print_timestamp();
-    printf("PID %d leaving barber shop\n", getpid());
+    printf("%lld : PID %d leaving barber shop after cut\n", timestamp(), getpid());
 }
 
 void print_client_enqueued()
 {
-    print_timestamp();
-    printf("PID %d enqueued\n", getpid());
+    printf("%lld : PID %d enqueued\n", timestamp(), getpid());
 }
 
 void print_no_seats()
 {
-    print_timestamp();
-    printf("PID %d leaving barber shop - no seats\n", getpid());
+    printf("%lld : PID %d leaving barber shop - no seats\n", timestamp(), getpid());
 }

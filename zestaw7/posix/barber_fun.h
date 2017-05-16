@@ -2,13 +2,14 @@
 #define BARBER_FUN_H
 
 #include <sys/types.h>
+#include <semaphore.h>
 
 struct shared_memory *create_memory(const int num_chairs, int *shmem_id);
 struct shared_memory *initialize_memory(const int shm_id, const int num_chairs);
-int create_barber_semaphore();
-int create_shm_semaphore();
-int create_customers_semaphore();
-void barber_loop(const int barber_sem_id, const int shm_sem_id, const int customers_sem_id, struct shared_memory *shm);
+sem_t *create_barber_semaphore();
+sem_t *create_shm_semaphore();
+sem_t *create_customers_semaphore();
+void barber_loop(sem_t *barber_sem_id, sem_t *shm_sem_id, sem_t *customers_sem_id, struct shared_memory *shm);
 
 void perform_haircut(const pid_t client_pid);
 
