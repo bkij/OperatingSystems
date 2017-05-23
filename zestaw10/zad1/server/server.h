@@ -5,6 +5,8 @@
 #ifndef ZESTAW10_SERVER_H
 #define ZESTAW10_SERVER_H
 
+#include "../common/common.h"
+
 #define NUM_SERVER_THREADS 3
 
 void parse_args(int argc, char **argv, int *port_num, char *socket_path);
