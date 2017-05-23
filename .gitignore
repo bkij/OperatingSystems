@@ -15,3 +15,5 @@ GRTAGS
 GTAGS
 libc
 .vscode/*
+*/.idea/*
+*cmake-build*
