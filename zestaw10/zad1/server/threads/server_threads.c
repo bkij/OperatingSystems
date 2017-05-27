@@ -11,6 +11,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <errno.h>
+#include <stdbool.h>
 #include "server_threads.h"
 #include "../../common/common.h"
 
@@ -18,30 +19,34 @@ int get_local_sock(char *path);
 
 int check_on_client(int sockfd);
 
-pthread_t create_listening_thread(int port_num, char *socket_path, struct client_info *clients)
+bool negotiate_adding(int newconnfd, struct local_conn_thread_info *conn_info);
+
+void notify_added(int notify_fd);
+
+pthread_t create_local_listening_thread(char *socket_path, struct client_info *clients, pthread_mutex_t *mutex)
 {
     pthread_t tid;
-    struct conn_thread_arg *arg = malloc(sizeof(struct conn_thread_arg));
-    arg->port_num = port_num;
+    struct local_conn_thread_info *arg = malloc(sizeof(struct local_conn_thread_info));
     arg->socket_path = socket_path;
     arg->clients = clients;
     arg->client_size = 0;
-    if(pthread_create(&tid, NULL, handle_conns, (void *)&arg) < 0) {
-        ERRNO_EXIT("Coudlnt create listening thread");
+    arg->mutex = mutex;
+    if(pthread_create(&tid, NULL, handle_local_conns, (void *) &arg) < 0) {
+        ERRNO_EXIT("Couldnt create listening thread");
     }
     return tid;
 }
 
-pthread_t create_requests_thread(struct client_info *clients)
+pthread_t create_requests_thread(struct client_info *clients, pthread_mutex_t *mutex)
 {
     pthread_t tid;
     if(pthread_create(&tid, NULL, handle_requests, (void *)clients) < 0) {
-        ERRNO_EXIT("Coudlnt create requests thread");
+        ERRNO_EXIT("Couldnt create requests thread");
     }
     return tid;
 }
 
-pthread_t create_pinging_thread(struct client_info *clients)
+pthread_t create_pinging_thread(struct client_info *clients, pthread_mutex_t *mutex)
 {
     pthread_t tid;
     if(pthread_create(&tid, NULL, ping, (void *)clients) < 0) {
@@ -50,11 +55,63 @@ pthread_t create_pinging_thread(struct client_info *clients)
     return tid;
 }
 
-void *handle_conns(void *arg) {
-    struct conn_thread_arg *conn_info = (struct conn_thread_arg *)arg;
+void *handle_local_conns(void *arg) {
+    struct local_conn_thread_info *conn_info = (struct local_conn_thread_info *)arg;
     int server_local_sock = get_local_sock(conn_info->socket_path);
-    int server_net_sock = get_net_sock(conn_info->port_num);
-    // TODO: Poll for connections on these sockets
+
+    struct sockaddr_storage client_addr;
+    socklen_t client_addr_size = sizeof(client_addr);
+    int newconnfd = accept(server_local_sock, (struct sockaddr *)&client_addr, &client_addr_size);
+    if(newconnfd < 0) {
+        // TODO: Really exit?
+        ERRNO_EXIT("Accept error");
+    }
+    bool added = negotiate_adding(newconnfd, conn_info);
+    if(added) {
+        notify_added(newconnfd, conn_info->notify_wr);
+    }
+}
+
+void notify_added(int newconnfd, int notify_fd)
+{
+    if(write(notify_fd, &newconnfd, sizeof(newconnfd)) < sizeof(newconnfd)) {
+        ERRNO_EXIT("Pipe notification error");
+    }
+}
+
+bool negotiate_adding(int newconnfd, struct local_conn_thread_info *conn_info)
+{
+    char client_name_buf[CLIENT_NAME_LEN];
+    bool can_add = true;
+
+    recvn(newconnfd, client_name_buf, CLIENT_NAME_LEN, 0);
+
+    acquire(conn_info->mutex);
+    for(int i = 0; i < conn_info->client_size; i++) {
+        if(!strncmp(client_name_buf, conn_info->clients[i].client_name, CLIENT_NAME_LEN)) {
+            can_add = false;
+            break;
+        }
+    }
+    if(can_add) {
+        strncpy(
+                conn_info->clients[conn_info->client_size].client_name,
+                client_name_buf,
+                CLIENT_NAME_LEN - 1
+        );
+        conn_info->clients[conn_info->client_size].client_name[CLIENT_NAME_LEN - 1] = '\0';
+        conn_info->client_size++;
+    }
+    release(conn_info->mutex);
+
+    if(can_add) {
+        sendn(newconnfd, "OK", sizeof("OK"), 0);
+        return true;
+    }
+    else {
+        sendn(newconnfd, "ERR", sizeof("ERR"), 0);
+        return false;
+    }
 }
 
 int get_net_sock(int port_num)
@@ -76,6 +133,9 @@ int get_net_sock(int port_num)
     if(bind(sockfd, info->ai_addr, info->ai_addrlen) < 0) {
         ERRNO_EXIT("Couldnt bind on network facing socket");
     }
+    if(listen(sockfd, MAX_CLIENTS) < 0) {
+        ERRNO_EXIT("Error listening on socket");
+    }
     return sockfd;
 }
 
@@ -90,6 +150,9 @@ int get_local_sock(char *path) {
     strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
     if(bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         ERRNO_EXIT("Error binding socket");
+    }
+    if(listen(sockfd, MAX_CLIENTS) < 0) {
+        ERRNO_EXIT("Error listening on socket");
     }
     return sockfd;
 }
