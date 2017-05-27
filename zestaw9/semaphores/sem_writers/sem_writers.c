@@ -20,8 +20,8 @@ void *write_to_array(void *arg)
             give_semaphore(info->rw_sem);
             continue;
         }
-        take_semaphore(info->writer_sem);
         give_semaphore(info->rw_sem);
+        take_semaphore(info->writer_sem);
         modify(info->shared_array, modification_cnt, info->verbose);
         take_semaphore(info->rw_sem);
         give_semaphore(info->writer_sem);
