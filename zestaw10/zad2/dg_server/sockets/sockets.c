@@ -13,25 +13,23 @@
 #include <errno.h>
 #include "sockets.h"
 
-int mk_nonblocking_local_sock(char *unix_sock_path) {
+int create_local_sock(char *unix_sock_path) {
     struct addrinfo *results = get_local_addrinfo(unix_sock_path);
-    int sockfd = mk_and_bind(results);
-    mk_nonblocking(sockfd);
+    int sockfd = create_and_bind(results);
     freeaddrinfo(results);
 
     return sockfd;
 }
 
-int mk_nonblocking_remote_sock(char *port_num) {
+int create_remote_sock(char *port_num) {
     struct addrinfo *results = get_remote_addrinfo(port_num);
-    int sockfd = mk_and_bind(results);
-    mk_nonblocking(sockfd);
+    int sockfd = create_and_bind(results);
     freeaddrinfo(results);
 
     return sockfd;
 }
 
-int mk_and_bind(struct addrinfo *results) {
+int create_and_bind(struct addrinfo *results) {
     int sockfd;
     for(struct addrinfo *rp = results; rp != NULL; rp = rp->ai_next) {
         sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
@@ -49,9 +47,9 @@ int mk_and_bind(struct addrinfo *results) {
     return sockfd;
 }
 
-void mk_nonblocking(int sockfd) {
+void make_nonblocking(int sockfd) {
     if(fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
-        fprintf(stderr, "fcntl error in func: %s: %s\n", "mk_nonblocking", strerror(errno));
+        fprintf(stderr, "fcntl error in func: %s: %s\n", "make_nonblocking", strerror(errno));
         exit(EXIT_FAILURE);
     }
 }

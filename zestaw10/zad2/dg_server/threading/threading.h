@@ -7,7 +7,9 @@
 
 #include <pthread.h>
 #include "../sockets/sockets.h"
+#include "../../common/common.h"
 
-pthread_t create_pinging_thread();
+pthread_t create_pinging_thread(struct thread_shared_data *data);
+pthread_t create_requests_thread(struct thread_shared_data *data);
 
 #endif //ZESTAW10_THREADING_H
