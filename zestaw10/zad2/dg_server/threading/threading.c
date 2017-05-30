@@ -4,6 +4,3 @@
 
 #include "threading.h"
 
-pthread_t create_remote_listening_thread(struct socket_info *socket_info) {
-    int sockfd = mk_nonblocking_remote_sock(socket_info->port_num)
-}

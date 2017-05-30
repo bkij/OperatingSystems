@@ -51,7 +51,7 @@ int mk_and_bind(struct addrinfo *results) {
 
 void mk_nonblocking(int sockfd) {
     if(fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
-        fprintf(stderr, "%s\n", "fcntl error in func: %s: %s", "mk_nonblocking", strerror(errno));
+        fprintf(stderr, "fcntl error in func: %s: %s\n", "mk_nonblocking", strerror(errno));
         exit(EXIT_FAILURE);
     }
 }
@@ -66,7 +66,7 @@ struct addrinfo *get_remote_addrinfo(char *port_num) {
     hints.ai_socktype = SOCK_DGRAM;     // UDP
 
     if((err = getaddrinfo(NULL, port_num, &hints, &results)) < 0) {
-        fprintf(stderr, "getaddrinfo error in func %s: %s", "get_remote_addrinfo", gai_strerror(err));
+        fprintf(stderr, "getaddrinfo error in func %s: %s\n", "get_remote_addrinfo", gai_strerror(err));
         exit(EXIT_FAILURE);
     }
 
@@ -83,7 +83,7 @@ struct addrinfo *get_local_addrinfo(char *unix_sock_path) {
     hints.ai_socktype = SOCK_DGRAM;     // Datagram
 
     if((err = getaddrinfo(NULL, unix_sock_path, &hints, &results)) < 0) {
-        fprintf(stderr, "getaddrinfo error in func %s: %s", "get_local_addrinfo", gai_strerror(err));
+        fprintf(stderr, "getaddrinfo error in func %s: %s\n", "get_local_addrinfo", gai_strerror(err));
         exit(EXIT_FAILURE);
     }
 

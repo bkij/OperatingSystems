@@ -30,13 +30,11 @@ void parse_args(int argc, char **argv, char *port_num, char *unix_sock_path) {
 
 void dipatch_threads(char *port_num, char *unix_sock_path) {
     pthread_t tids[WORKER_THREADS_NUM];
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    int remote_sockfd;
+    int local_sockfd;
     int tidx = 0;
 
-    struct socket_info socket_info = {.port_num = port_num, .unix_sock_path = unix_sock_path};
-
-    tids[tidx++] = create_remote_listening_thread(&socket_info);
-    tids[tidx++] = create_local_listening_thread(&socket_info);
-    tids[tidx++] = create_requests_thread();
     tids[tidx++] = create_pinging_thread();
 
     for(int i = 0; i < tidx; i++) {
@@ -44,6 +42,9 @@ void dipatch_threads(char *port_num, char *unix_sock_path) {
             tids[i] = 0;
         }
     }
+
+    remote_sockfd = mk_nonblocking_remote_sock(port_num);
+    local_sockfd = mk_nonblocking_local_sock(unix_sock_path);
 
     /*
      * TODO: IO
