@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "threads/server_threads.h"
 #include "../common/common.h"
 #include "server.h"
@@ -13,19 +14,21 @@
 
 void init_clients(struct client_info *clients);
 
+void init_pipe(int notification_pipe[2]);
+
 int main(int argc, char *argv[])
 {
     int port_num;
     char socket_path[MAX_PATH_LEN];
     parse_args(argc, argv, &port_num, socket_path);
-    listen(port_num, socket_path);
+    dispatch_and_listen(port_num, socket_path);
     exit(EXIT_SUCCESS);
 }
 
 void parse_args(int argc, char **argv, int *port_num, char *socket_path)
 {
     if(argc < 3) {
-        fprintf(stderr, "%s\n", "Usage: ./server PORT_NUM SOCKET_PATH");
+        fprintf(stderr, "%s\n", "Usage: [sudo] ./server PORT_NUM SOCKET_PATH");
         exit(EXIT_FAILURE);
     }
     *port_num = atoi(argv[1]);
@@ -33,21 +36,29 @@ void parse_args(int argc, char **argv, int *port_num, char *socket_path)
     socket_path[MAX_PATH_LEN - 1] = '\0';
 }
 
-void listen(int port_num, char *socket_path)
+void dispatch_and_listen(int port_num, char *socket_path)
 {
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_t tids[NUM_SERVER_THREADS];
     struct client_info clients[MAX_CLIENTS];
+    int notification_pipe[2];
+
     init_clients(clients);
+    init_pipe(notification_pipe);
 
     int idx = 0;
-    tids[idx++] = create_listening_thread(port_num, socket_path, clients);
-    tids[idx++] = create_requests_thread(clients);
-    tids[idx++] = create_pinging_thread(clients);
+    tids[idx++] = create_local_listening_thread(socket_path, clients, &mutex);
+    tids[idx++] = create_requests_thread(clients, &mutex);
+    tids[idx] = create_pinging_thread(clients, &mutex);
 
-    for(int i = 0; i < NUM_SERVER_THREADS; i++) {
-        if(pthread_join(tids[i], NULL) < 0) {
-            ERRNO_EXIT("Error joining a thread");
-        }
+    // Wait for remote connections
+
+}
+
+void init_pipe(int notification_pipe[2])
+{
+    if(pipe(notification_pipe) < 0) {
+        ERRNO_EXIT("Error creating pipe");
     }
 }
 
