@@ -7,6 +7,8 @@
 
 #include <pthread.h>
 #include <malloc.h>
+#include <sys/socket.h>
+#include <stdbool.h>
 
 #define PORT_STR_LEN 6
 #define UNIX_PATH_MAX 108
@@ -19,6 +21,9 @@
 struct client_info {
     int id;
     char client_name[CLIENT_NAME_LEN + 1];
+    struct sockaddr_storage addr_info;
+    socklen_t addr_len;
+    bool is_remote;
 };
 
 struct thread_shared_data {
@@ -27,10 +32,23 @@ struct thread_shared_data {
     pthread_mutex_t *cli_mutex;
     pthread_mutex_t *msg_mutex;
     struct client_info *clients;
+    int io_rd_fd;
+    bool pinged;
 };
 
+struct add_request {
+    bool add;
+    char client_name[CLIENT_NAME_LEN + 1];
+};
 
-pthread_mutex_t *init_mutex();
+struct add_response {
+    int id;
+};
+
 struct client_info *init_clients();
+void init_pipe(int io_pipe[2]);
+
+void acquire(pthread_mutex_t *mutex);
+void release(pthread_mutex_t *mutex);
 
 #endif //ZESTAW10_COMMON_H

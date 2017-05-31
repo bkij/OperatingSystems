@@ -11,12 +11,27 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/un.h>
 #include "sockets.h"
 
 int create_local_sock(char *unix_sock_path) {
-    struct addrinfo *results = get_local_addrinfo(unix_sock_path);
-    int sockfd = create_and_bind(results);
-    freeaddrinfo(results);
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(struct sockaddr_un));
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, unix_sock_path);
+    int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if(sockfd == -1) {
+        fprintf(stderr, "Error creating socket at func %s: %s\n", "create_local_sock", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    if(bind(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_un)) < 0) {
+        fprintf(stderr, "Error binding local socket: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+//    if(unlink(unix_sock_path) < 0) {
+//        fprintf(stderr, "Error unlinking local socket: %s\n", strerror(errno));
+//        exit(EXIT_FAILURE);
+//    }
 
     return sockfd;
 }
@@ -65,23 +80,6 @@ struct addrinfo *get_remote_addrinfo(char *port_num) {
 
     if((err = getaddrinfo(NULL, port_num, &hints, &results)) < 0) {
         fprintf(stderr, "getaddrinfo error in func %s: %s\n", "get_remote_addrinfo", gai_strerror(err));
-        exit(EXIT_FAILURE);
-    }
-
-    return results;
-}
-
-struct addrinfo *get_local_addrinfo(char *unix_sock_path) {
-    int err;
-    struct addrinfo hints;
-    struct addrinfo *results;
-
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNIX;          // Local
-    hints.ai_socktype = SOCK_DGRAM;     // Datagram
-
-    if((err = getaddrinfo(NULL, unix_sock_path, &hints, &results)) < 0) {
-        fprintf(stderr, "getaddrinfo error in func %s: %s\n", "get_local_addrinfo", gai_strerror(err));
         exit(EXIT_FAILURE);
     }
 

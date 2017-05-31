@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "common.h"
 
 struct client_info *init_clients()
@@ -16,12 +17,24 @@ struct client_info *init_clients()
     return clients;
 }
 
-pthread_mutex_t *init_mutex()
+void init_pipe(int io_pipe[2])
 {
-    pthread_mutex_t *mutex = malloc(sizeof(pthread_mutex_t));
-    if(pthread_mutex_init(mutex, NULL) < 0) {
-        fprintf(stderr, "Mutex err at function: %s: %s\n", "init_mutex()", strerror(errno));
+    if(pipe(io_pipe) < 0) {
+        fprintf(stderr, "Pipe error at func: %s - %s\n", "init_pipe", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    return mutex;
+}
+
+void acquire(pthread_mutex_t *mutex) {
+    if(pthread_mutex_lock(mutex) < 0) {
+        fprintf(stderr, "Mutex error at function: %s: %s\n", "acquire", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+}
+
+void release(pthread_mutex_t *mutex) {
+    if(pthread_mutex_unlock(mutex) < 0) {
+        fprintf(stderr, "Mutex error at function: %s: %s\n", "release", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 }
