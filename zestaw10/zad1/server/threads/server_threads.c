@@ -2,6 +2,7 @@
 // Created by kveld on 23.05.17.
 //
 #define POSIX_C_SOURCE 201113L
+
 #include <malloc.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -12,131 +13,96 @@
 #include <netdb.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <sys/epoll.h>
 #include "server_threads.h"
 #include "../../common/common.h"
+#include "../../../zad2/common/common.h"
 
-int get_local_sock(char *path);
+static int request_counter = 0;
 
-int check_on_client(int sockfd);
-
-bool negotiate_adding(int newconnfd, struct local_conn_thread_info *conn_info);
-
-void notify_added(int notify_fd);
-
-pthread_t create_local_listening_thread(char *socket_path, struct client_info *clients, pthread_mutex_t *mutex)
+pthread_t create_local_listening_thread(struct thread_info *info)
 {
     pthread_t tid;
-    struct local_conn_thread_info *arg = malloc(sizeof(struct local_conn_thread_info));
-    arg->socket_path = socket_path;
-    arg->clients = clients;
-    arg->client_size = 0;
-    arg->mutex = mutex;
-    if(pthread_create(&tid, NULL, handle_local_conns, (void *) &arg) < 0) {
+    if(pthread_create(&tid, NULL, handle_local_conns, (void *)info) < 0) {
         ERRNO_EXIT("Couldnt create listening thread");
     }
     return tid;
 }
 
-pthread_t create_requests_thread(struct client_info *clients, pthread_mutex_t *mutex)
+pthread_t create_requests_thread(struct thread_info *info)
 {
     pthread_t tid;
-    if(pthread_create(&tid, NULL, handle_requests, (void *)clients) < 0) {
+    if(pthread_create(&tid, NULL, handle_requests, (void *)info) < 0) {
         ERRNO_EXIT("Couldnt create requests thread");
     }
     return tid;
 }
 
-pthread_t create_pinging_thread(struct client_info *clients, pthread_mutex_t *mutex)
+pthread_t create_pinging_thread(struct thread_info *info)
 {
     pthread_t tid;
-    if(pthread_create(&tid, NULL, ping, (void *)clients) < 0) {
+    if(pthread_create(&tid, NULL, ping, (void *)info) < 0) {
         ERRNO_EXIT("Couldnt create pinging thread");
     }
     return tid;
 }
 
 void *handle_local_conns(void *arg) {
-    struct local_conn_thread_info *conn_info = (struct local_conn_thread_info *)arg;
+    struct thread_info *conn_info = (struct thread_info *)arg;
     int server_local_sock = get_local_sock(conn_info->socket_path);
 
-    struct sockaddr_storage client_addr;
-    socklen_t client_addr_size = sizeof(client_addr);
-    int newconnfd = accept(server_local_sock, (struct sockaddr *)&client_addr, &client_addr_size);
-    if(newconnfd < 0) {
-        // TODO: Really exit?
-        ERRNO_EXIT("Accept error");
-    }
-    bool added = negotiate_adding(newconnfd, conn_info);
-    if(added) {
-        notify_added(newconnfd, conn_info->notify_wr);
+    while(1) {
+        int newconnfd = accept(server_local_sock, NULL, NULL);
+        if (newconnfd < 0) {
+            fprintf(stderr, "Accpet error: %s\n", strerror(errno));
+        }
+        acquire(conn_info->mutex);
+        bool added = negotiate_adding(newconnfd, conn_info);
+        release(conn_info->mutex);
+        if (added) {
+            notify_added(newconnfd, conn_info->notify_wr_fd);
+        }
     }
 }
 
 void notify_added(int newconnfd, int notify_fd)
 {
+    printf("NOTIFYING: %d\n", newconnfd);
     if(write(notify_fd, &newconnfd, sizeof(newconnfd)) < sizeof(newconnfd)) {
         ERRNO_EXIT("Pipe notification error");
     }
 }
 
-bool negotiate_adding(int newconnfd, struct local_conn_thread_info *conn_info)
+bool negotiate_adding(int newconnfd, struct thread_info *conn_info)
 {
-    char client_name_buf[CLIENT_NAME_LEN];
+    struct add_request request_buf;
+    memset(&request_buf, 0 ,sizeof(request_buf));
     bool can_add = true;
 
-    recvn(newconnfd, client_name_buf, CLIENT_NAME_LEN, 0);
+    recvn(newconnfd, &request_buf, CLIENT_NAME_LEN, 0);
 
-    acquire(conn_info->mutex);
     for(int i = 0; i < conn_info->client_size; i++) {
-        if(!strncmp(client_name_buf, conn_info->clients[i].client_name, CLIENT_NAME_LEN)) {
+        if(conn_info->clients[i].sock_fd != -1 && !strcmp(request_buf.client_name_buf, conn_info->clients[i].client_name)) {
             can_add = false;
             break;
         }
     }
     if(can_add) {
-        strncpy(
-                conn_info->clients[conn_info->client_size].client_name,
-                client_name_buf,
-                CLIENT_NAME_LEN - 1
-        );
-        conn_info->clients[conn_info->client_size].client_name[CLIENT_NAME_LEN - 1] = '\0';
+        strcpy(conn_info->clients[conn_info->client_size].client_name, request_buf.client_name_buf);
+        conn_info->clients[conn_info->client_size].sock_fd = newconnfd;
         conn_info->client_size++;
     }
-    release(conn_info->mutex);
 
     if(can_add) {
+        printf("Registered new client: %s\n", request_buf.client_name_buf);
         sendn(newconnfd, "OK", sizeof("OK"), 0);
         return true;
     }
     else {
+        printf("Didnt register client: %s, duplicate name or MAX_CLIENTS reached\n", request_buf.client_name_buf);
         sendn(newconnfd, "ERR", sizeof("ERR"), 0);
         return false;
     }
-}
-
-int get_net_sock(int port_num)
-{
-    struct addrinfo hints, *info;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    if(getaddrinfo(NULL, port_num, &hints, &info) != 0) {
-        ERRNO_EXIT("Couldnt create network facing socket");
-    }
-
-    int sockfd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-    if(sockfd < 0) {
-        ERRNO_EXIT("Couldnt create network facing socket configuration");
-    }
-    if(bind(sockfd, info->ai_addr, info->ai_addrlen) < 0) {
-        ERRNO_EXIT("Couldnt bind on network facing socket");
-    }
-    if(listen(sockfd, MAX_CLIENTS) < 0) {
-        ERRNO_EXIT("Error listening on socket");
-    }
-    return sockfd;
 }
 
 int get_local_sock(char *path) {
@@ -158,22 +124,125 @@ int get_local_sock(char *path) {
 }
 
 void *handle_requests(void *arg) {
-    struct client_info *clients = (struct client_info *)arg;
+    int newfd;
+    char input_buf[64];
+    struct op_response response;
+    srand(time(NULL));
+    int last_cli_idx = -1;
+    struct thread_info *data = (struct thread_info *)arg;
     // Poll for requests
+    struct epoll_event events[MAX_CLIENTS + 2];
+    int epoll_last_idx = 2;
+    struct epoll_event ret_events[MAX_CLIENTS + 2];
+    int epoll_fd = epoll_create1(0);
+    if(epoll_fd == -1) {
+        fprintf(stderr, "epoll create error: %s\n", strerror(errno));
+    }
+    events[0].data.fd = data->io_rd_fd;
+    events[0].events = EPOLLIN;
+    events[1].data.fd = data->notify_rd_fd;
+    events[1].events = EPOLLIN;
+    if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, data->io_rd_fd, &events[0]) < 0) {
+        fprintf(stderr, "Error adding io_rd_fd to epoll: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, data->notify_rd_fd, &events[1]) < 0) {
+        fprintf(stderr, "Error adding notify_rd_fd to epoll: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    while(1) {
+        int n = epoll_wait(epoll_fd, ret_events, MAX_CLIENTS + 2, -1);
+        acquire(data->mutex);
+        for(int i = 0; i < n; i++) {
+            if(data->pinged) {
+                data->pinged = false;
+                break;
+            }
+            check_err(&ret_events[i]);
+            if(ret_events[i].data.fd == data->io_rd_fd) {
+                if(read(ret_events[i].data.fd, input_buf, sizeof(input_buf)) < 0) {
+                    fprintf(stderr, "Error reading from io pipe\n");
+                    exit(EXIT_FAILURE);
+                }
+                int cli_idx = rand() % MAX_CLIENTS;
+                while(data->clients[cli_idx].sock_fd == -1 || cli_idx == last_cli_idx) {
+                    cli_idx = (cli_idx + 1) & MAX_CLIENTS;
+                }
+                struct op_request request;
+                request.counter = request_counter;
+                memcpy(request.buf, input_buf, 64);
+                printf("Sending request %d to client %s\n", request_counter, data->clients[cli_idx].client_name);
+                if(send(data->clients[cli_idx].sock_fd, &request, sizeof(struct op_request), 0) < 0) {
+                    fprintf(stderr, "Send error: %s\n", strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+                request_counter++;
+                acquire(data->ping_mutex);
+                data->reset = true;
+                release(data->ping_mutex);
+            }
+            else if(ret_events[i].data.fd == data->notify_rd_fd) {
+                if(read(ret_events[i].data.fd, &newfd, sizeof(newfd)) < 0) {
+                    fprintf(stderr, "Err reading notification pipe: %s\n", strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+                printf("NEWFD: %d\n", newfd);
+                events[epoll_last_idx].data.fd = newfd;
+                events[epoll_last_idx].events = EPOLLIN;
+                if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, newfd, &events[epoll_last_idx]) < 0) {
+                    fprintf(stderr, "epoll_ctl add error: %s\n", strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+                epoll_last_idx++;
+            }
+            else {
+                if(recv(ret_events[i].data.fd, &response, sizeof(response), 0) < 0) {
+                    fprintf(stderr, "Recv error: %s\n", strerror(errno));
+                    exit(EXIT_FAILURE);
+                }
+                printf("Got response: %d, result is: %ld\n", response.counter, response.response);
+                acquire(data->ping_mutex);
+                data->reset = true;
+                release(data->ping_mutex);
+            }
+        }
+        release(data->mutex);
+    }
+}
+
+void check_err(struct epoll_event *pEvent) {
+    if(     (pEvent->events & EPOLLERR) ||
+            (pEvent->events & EPOLLHUP) ||
+            (!(pEvent->events & EPOLLIN))) {
+        fprintf(stderr, "Miscellaneous epoll error\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void *ping(void *arg) {
-    struct client_info *clients = (struct client_info *)arg;
+    struct thread_info *info = (struct thread_info *)arg;
     while(1) {
-        sleep(5);
+        unsigned time_slept = 0;
+        while(time_slept < 30) {
+            time_slept += sleep(1);
+            acquire(info->ping_mutex);
+            if(info->reset) {
+                time_slept = 0;
+                info->reset = false;
+            }
+            release(info->ping_mutex);
+        }
+        acquire(info->mutex);
         for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (clients[i].sock_fd != -1) {
-                if(check_on_client(clients[i].sock_fd) < 0) {
-                    close(clients[i].sock_fd);
-                    clients[i].sock_fd = -1;
+            if (info->clients[i].sock_fd != -1) {
+                if(check_on_client(info->clients[i].sock_fd) < 0) {
+                    close(info->clients[i].sock_fd);
+                    info->clients[i].sock_fd = -1;
                 }
             }
         }
+        info->pinged = true;
+        release(info->mutex);
     }
 }
 
@@ -184,18 +253,81 @@ int check_on_client(int sockfd)
     while(bytes_sent != sizeof(buf)) {
         ssize_t bytes = send(sockfd, buf, sizeof(buf), 0);
         if(bytes < 0) {
-            ERRNO_EXIT("Send error while pinging");
+            return -1;
         }
         bytes_sent += bytes;
     }
 
     char resp_buf[3];
-    ssize_t bytes_received = recv(sockfd, resp_buf, sizeof(resp_buf), MSG_DONTWAIT);
-    if(bytes_received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    ssize_t bytes_received = recv(sockfd, resp_buf, sizeof(resp_buf), 0);
+    if(bytes_received < 0) {
         return -1;
     }
-    else if(bytes_received < 0) {
-        ERRNO_EXIT("Error while pinging");
-    }
     return 0;
+}
+
+pthread_t create_remote_listening_thread(struct thread_info *info) {
+    pthread_t tid;
+    if(pthread_create(&tid, NULL, handle_remote_conns, (void *)info) < 0) {
+        fprintf(stderr, "pthread create err: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    return tid;
+}
+
+void *handle_remote_conns(void *arg) {
+    struct thread_info *info = (struct thread_info *)arg;
+    int server_remote_sock = get_net_sock(info->port_num);
+
+    while(1) {
+        int newconnfd = accept(server_remote_sock, NULL, NULL);
+        if (newconnfd < 0) {
+            fprintf(stderr, "Accpet error: %s\n", strerror(errno));
+        }
+        acquire(info->mutex);
+        bool added = negotiate_adding(newconnfd, info);
+        release(info->mutex);
+        if (added) {
+            notify_added(newconnfd, info->notify_wr_fd);
+        }
+    }
+}
+
+int get_net_sock(char *port_num) {
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
+    int err;
+    int sockfd;
+
+    memset (&hints, 0, sizeof (struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    if((err = getaddrinfo(NULL, port_num, &hints, &result)) < 0) {
+        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(err));
+        exit(EXIT_FAILURE);
+    }
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        sockfd = socket (rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sockfd < 0) {
+            continue;
+        }
+        if(!bind(sockfd, rp->ai_addr, rp->ai_addrlen)) {
+            break;
+        }
+        close (sockfd);
+    }
+    if (rp == NULL) {
+        fprintf (stderr, "Could not bind\n");
+        exit(EXIT_FAILURE);
+    }
+    freeaddrinfo (result);
+
+    if(listen(sockfd, MAX_CLIENTS) < 0) {
+        fprintf(stderr, "listen err\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return sockfd;
 }
