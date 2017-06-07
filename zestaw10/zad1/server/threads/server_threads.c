@@ -67,7 +67,6 @@ void *handle_local_conns(void *arg) {
 
 void notify_added(int newconnfd, int notify_fd)
 {
-    printf("NOTIFYING: %d\n", newconnfd);
     if(write(notify_fd, &newconnfd, sizeof(newconnfd)) < sizeof(newconnfd)) {
         ERRNO_EXIT("Pipe notification error");
     }
@@ -113,7 +112,8 @@ int get_local_sock(char *path) {
     struct sockaddr_un addr;
     memset(&addr, 0 , sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
+    strcpy(addr.sun_path, path);
+    unlink(addr.sun_path);
     if(bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         ERRNO_EXIT("Error binding socket");
     }
@@ -124,6 +124,7 @@ int get_local_sock(char *path) {
 }
 
 void *handle_requests(void *arg) {
+    int newly_added = -1;
     int newfd;
     char input_buf[64];
     struct op_response response;
@@ -158,7 +159,27 @@ void *handle_requests(void *arg) {
                 data->pinged = false;
                 break;
             }
-            check_err(&ret_events[i]);
+            if(     (ret_events[i].events & EPOLLERR) ||
+                    (ret_events[i].events & EPOLLHUP) ||
+                    (!(ret_events[i].events & EPOLLIN))) {
+        //        fprintf(stderr, "Miscellaneous epoll error\n");
+        //        fprintf(stderr, "%s, %s, %s",
+        //                pEvent->events & EPOLLERR    ? "EPOLLERR" : "",
+        //                pEvent->events & EPOLLHUP    ? "EPOLLHUP" : "",
+        //                !(pEvent->events & EPOLLIN)  ? "~EPOLLIN" : ""
+        //        );
+        //        exit(EXIT_FAILURE);
+                close(ret_events[i].data.fd);
+                int j;
+                for(j = 0; j < MAX_CLIENTS; j++) {
+                    if(data->clients[j].sock_fd == ret_events[i].data.fd) {
+                        data->clients[j].sock_fd = -1;
+                        break;
+                    }
+                }
+                printf("%s disconnected\n", data->clients[j].client_name);
+                continue;
+            }
             if(ret_events[i].data.fd == data->io_rd_fd) {
                 if(read(ret_events[i].data.fd, input_buf, sizeof(input_buf)) < 0) {
                     fprintf(stderr, "Error reading from io pipe\n");
@@ -166,8 +187,9 @@ void *handle_requests(void *arg) {
                 }
                 int cli_idx = rand() % MAX_CLIENTS;
                 while(data->clients[cli_idx].sock_fd == -1 || cli_idx == last_cli_idx) {
-                    cli_idx = (cli_idx + 1) & MAX_CLIENTS;
+                    cli_idx = (cli_idx + 1) % MAX_CLIENTS;
                 }
+                last_cli_idx = cli_idx;
                 struct op_request request;
                 request.counter = request_counter;
                 memcpy(request.buf, input_buf, 64);
@@ -186,19 +208,38 @@ void *handle_requests(void *arg) {
                     fprintf(stderr, "Err reading notification pipe: %s\n", strerror(errno));
                     exit(EXIT_FAILURE);
                 }
-                printf("NEWFD: %d\n", newfd);
                 events[epoll_last_idx].data.fd = newfd;
                 events[epoll_last_idx].events = EPOLLIN;
                 if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, newfd, &events[epoll_last_idx]) < 0) {
                     fprintf(stderr, "epoll_ctl add error: %s\n", strerror(errno));
                     exit(EXIT_FAILURE);
                 }
+                newly_added = newfd;
                 epoll_last_idx++;
             }
             else {
-                if(recv(ret_events[i].data.fd, &response, sizeof(response), 0) < 0) {
+                ssize_t ret;
+                if((ret = recv(ret_events[i].data.fd, &response, sizeof(response), 0)) < 0) {
                     fprintf(stderr, "Recv error: %s\n", strerror(errno));
                     exit(EXIT_FAILURE);
+                }
+                if(ret == 0) {
+                    //EOF
+
+                    close(ret_events[i].data.fd);
+                    int j;
+                    for(j = 0; j < MAX_CLIENTS; j++) {
+                        if(data->clients[j].sock_fd == ret_events[i].data.fd) {
+                            data->clients[j].sock_fd = -1;
+                            break;
+                        }
+                    }
+                    printf("%s disconnected\n", data->clients[j].client_name);
+                    continue;
+                }
+                if(newly_added == ret_events[i].data.fd) {
+                    newly_added = -1;
+                    continue;
                 }
                 printf("Got response: %d, result is: %ld\n", response.counter, response.response);
                 acquire(data->ping_mutex);
@@ -207,15 +248,6 @@ void *handle_requests(void *arg) {
             }
         }
         release(data->mutex);
-    }
-}
-
-void check_err(struct epoll_event *pEvent) {
-    if(     (pEvent->events & EPOLLERR) ||
-            (pEvent->events & EPOLLHUP) ||
-            (!(pEvent->events & EPOLLIN))) {
-        fprintf(stderr, "Miscellaneous epoll error\n");
-        exit(EXIT_FAILURE);
     }
 }
 

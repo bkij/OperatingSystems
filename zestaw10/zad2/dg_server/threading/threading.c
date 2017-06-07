@@ -136,9 +136,9 @@ void *handle_requests(void *arg)
                 }
                 if(!request_buf.add) {
                     // Unregister client
-                    for(int i = 0; i < MAX_CLIENTS; i++) {
-                        if(!strcmp(data->clients[i].client_name, request_buf.client_name)) {
-                            data->clients[i].id = -1;
+                    for(int j = 0; j < MAX_CLIENTS; j++) {
+                        if(!strcmp(data->clients[j].client_name, request_buf.client_name)) {
+                            data->clients[j].id = -1;
                             printf("Client %s unregistered\n", request_buf.client_name);
                             break;
                         }

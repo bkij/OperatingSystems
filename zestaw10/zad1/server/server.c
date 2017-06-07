@@ -68,7 +68,7 @@ void dispatch_and_listen(char *port_num, char *socket_path)
     tids[idx++] = create_remote_listening_thread(&info);
     tids[idx++] = create_local_listening_thread(&info);
     tids[idx++] = create_requests_thread(&info);
-//    tids[idx] = create_pinging_thread(&info);
+//TODO: ? tids[idx] = create_pinging_thread(&info);
 
     while(fgets(input_buf, sizeof(input_buf), stdin) != NULL) {
         if(write(io_pipe[1], input_buf, sizeof(input_buf)) < 0) {

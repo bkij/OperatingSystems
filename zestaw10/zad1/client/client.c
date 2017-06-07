@@ -34,7 +34,6 @@ int main(int argc, char **argv)
     char unix_sock_path[UNIX_PATH_MAX];
     char port[6];
     parse_args(argc, argv, name, address, unix_sock_path, port);
-    signal(SIGINT, handlesigint);
     if(port[0] == '-') {
         remote = false;
         run_local(name, unix_sock_path);
@@ -48,9 +47,12 @@ int main(int argc, char **argv)
 
 void run_local(char name[], char unix_sock_path[108]) {
     struct op_request request_buf;
+
     char add_response[4];
     memset(add_response, 0, 4);
+
     struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, unix_sock_path);
 
@@ -66,6 +68,10 @@ void run_local(char name[], char unix_sock_path[108]) {
 
     if(connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         fprintf(stderr, "Error connecting add request: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    if(send(sockfd, &add_request, sizeof(add_request), 0) < 0) {
+        fprintf(stderr, "Error sending request: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
     if(recv(sockfd, add_response, 4, 0) < 0) {
@@ -93,7 +99,7 @@ void run_local(char name[], char unix_sock_path[108]) {
             fprintf(stderr, "Recvfrom error, request %s\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
-        if(!strcmp(request_buf.buf, "PING")) {
+        if(!strncmp(request_buf.buf, "PING", 4)) {
             printf("got a ping\n");
             char ok[] = "OK";
             if(send(sockfd, "OK", sizeof("OK"), 0) < 0) {
@@ -109,7 +115,7 @@ void run_local(char name[], char unix_sock_path[108]) {
                     .counter = request_buf.counter
             };
             printf("Sending result: %ld\n", response.response);
-            if (send(sockfd, &response, sizeof(response), 0)){
+            if (send(sockfd, &response, sizeof(response), 0) < 0){
                 fprintf(stderr, "Send error, request: %s\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
@@ -248,7 +254,7 @@ void run_remote(char *name, char *address, char *port) {
             printf("got a ping\n");
             char ok[] = "OK";
             if(send(sockfd, ok, sizeof(ok), 0) < 0) {
-                fprintf(stderr, "Send error, request: %s\n", strerror(errno));
+                fprintf(stderr, "Send error on OK, request: %s\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
             printf("sent back OK\n");
@@ -260,11 +266,11 @@ void run_remote(char *name, char *address, char *port) {
                     .counter = request.counter
             };
             printf("Sending result: %ld\n", response.response);
-            sendn(sockfd, &response, sizeof(response), 0);
-//            if (send(sockfd, &response, sizeof(response), 0) < 0) {
-//                fprintf(stderr, "Send error, request: %s\n", strerror(errno));
-//                exit(EXIT_FAILURE);
-//            }
+            //sendn(sockfd, &response, sizeof(response), 0);
+            if (send(sockfd, &response, sizeof(response), 0) < 0) {
+                fprintf(stderr, "Send error on RESULT, request: %s\n", strerror(errno));
+                exit(EXIT_FAILURE);
+            }
         }
     }
 }

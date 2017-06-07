@@ -19,6 +19,7 @@ int create_local_sock(char *unix_sock_path) {
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
     strcpy(addr.sun_path, unix_sock_path);
+    unlink(addr.sun_path);
     int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if(sockfd == -1) {
         fprintf(stderr, "Error creating socket at func %s: %s\n", "create_local_sock", strerror(errno));
